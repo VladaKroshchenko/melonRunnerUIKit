@@ -1,5 +1,5 @@
 //
-//  ViewController.swift
+//  MapViewController.swift
 //  melonRunnerUIKit
 //
 //  Created by Kroshchenko Vlada on 11.08.2025.
@@ -19,7 +19,7 @@ class UserAnnotation: NSObject, MKAnnotation {
     }
 }
 
-class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
+class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
 
     // UI элементы
     private let mapView = MKMapView()
@@ -29,7 +29,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     private let startButton = UIButton(type: .system)
     private let pauseContinueButton = UIButton(type: .system)
     private let stopButton = UIButton(type: .system)
-    private let backButton = UIButton(type: .system)
 
     // Логика
     private let locationManager = CLLocationManager()
@@ -155,31 +154,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
             stopButton.heightAnchor.constraint(equalToConstant: 50)
         ])
         stopButton.isHidden = true
-
-        // Кнопка "Назад"
-        backButton.setTitle("", for: .normal)
-        backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        backButton.tintColor = .black
-        backButton.backgroundColor = .white.withAlphaComponent(0.9)
-        backButton.layer.cornerRadius = 20
-        backButton.layer.shadowRadius = 2
-        backButton.layer.shadowOpacity = 0.5
-        backButton.addTarget(self, action: #selector(backPressed), for: .touchUpInside)
-        view.addSubview(backButton)
-        backButton.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            backButton.widthAnchor.constraint(equalToConstant: 40),
-            backButton.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        backButton.isHidden = isRunning
-
-        // Свайп назад
-        let swipeBack = UISwipeGestureRecognizer(target: self, action: #selector(swipeBackPressed))
-        swipeBack.direction = .right
-        view.addGestureRecognizer(swipeBack)
-        swipeBack.isEnabled = !isRunning
     }
 
     private func setupLocationManager() {
@@ -192,7 +166,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
         startButton.isHidden = isRunning
         pauseContinueButton.isHidden = !isRunning
         stopButton.isHidden = !isRunning
-        backButton.isHidden = isRunning
         view.gestureRecognizers?.first(where: { $0 is UISwipeGestureRecognizer })?.isEnabled = !isRunning
 
         pauseContinueButton.setTitle(isPaused ? "Продолжить" : "Пауза", for: .normal)
@@ -200,11 +173,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
     }
 
     @objc private func backPressed() {
-        print("Back pressed") // Заглушка для действия кнопки
-    }
-
-    @objc private func swipeBackPressed() {
-        print("Back pressed") // То же действие, что у кнопки "Назад"
+        dismiss(animated: true, completion: nil)
     }
 
     @objc private func startRun() {
