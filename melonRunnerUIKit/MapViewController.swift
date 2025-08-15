@@ -325,7 +325,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
                 // Обновление дистанции
                 if let locations = self?.locations, locations.count > 1 {
                     let lastLocation = locations[locations.count - 2]
-                    self?.totalDistance += newLocation.distance(from: lastLocation)
+                    self?.totalDistance += newLocation.distance(from: lastLocation) / 1000
                     self?.distanceLabel.text = String(format: "👣 Дистанция: %.2f км", self?.totalDistance ?? 0 / 1000)
                 }
 
