@@ -47,6 +47,24 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private var userAnnotation: UserAnnotation?
     private var routeOverlay: MKPolyline?
 
+    // Цвет фона (тёплый пастельно-оранжевый)
+    let backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
+
+    // Цвет кожуры дыни (золотисто-жёлтый)
+    let melonRind = UIColor(red: 0.96, green: 0.80, blue: 0.27, alpha: 1.0)
+
+    // Цвет сетки кожуры (светло-жёлтый)
+    let melonPattern = UIColor(red: 0.99, green: 0.91, blue: 0.64, alpha: 1.0)
+
+    // Цвет ботвы и ног (тёмно-зелёный)
+    let stemAndLegs = UIColor(red: 0.32, green: 0.50, blue: 0.29, alpha: 1.0)
+
+    // Цвет шляпы (тёплый оранжевый)
+    let hatColor = UIColor(red: 0.91, green: 0.60, blue: 0.23, alpha: 1.0)
+
+    // Тёмно-коричневый для контуров и лица
+    let outlineAndFace = UIColor(red: 0.31, green: 0.29, blue: 0.19, alpha: 1.0)
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -55,7 +73,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func setupUI() {
-        view.backgroundColor = .white
+        view.backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
 
         // Настройка карты
         mapView.delegate = self
@@ -74,7 +92,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         labelsStack.axis = .vertical
         labelsStack.spacing = 10
         labelsStack.alignment = .leading
-        labelsStack.backgroundColor = .white.withAlphaComponent(0.9)
+        labelsStack.backgroundColor = UIColor(red: 0.99, green: 0.91, blue: 0.64, alpha: 1.0).withAlphaComponent(0.8)
         labelsStack.layer.cornerRadius = 12
         labelsStack.layer.shadowRadius = 5
         labelsStack.layer.shadowOpacity = 0.5
@@ -91,26 +109,26 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         ])
 
         timeLabel.text = "⏱️ Время: 00:00:00"
-        timeLabel.font = .systemFont(ofSize: 20, weight: .medium)
+        timeLabel.font = .systemFont(ofSize: 20, weight: .bold)
         timeLabel.textColor = .black
         timeLabel.textAlignment = .left
 
         distanceLabel.text = "👣 Дистанция: 0.00 км"
-        distanceLabel.font = .systemFont(ofSize: 20, weight: .medium)
+        distanceLabel.font = .systemFont(ofSize: 20, weight: .bold)
         distanceLabel.textColor = .black
         distanceLabel.textAlignment = .left
 
         caloriesLabel.text = "🔥 Калории: 0 ккал"
-        caloriesLabel.font = .systemFont(ofSize: 20, weight: .medium)
+        caloriesLabel.font = .systemFont(ofSize: 20, weight: .bold)
         caloriesLabel.textColor = .black
         caloriesLabel.textAlignment = .left
 
         // Кнопка "Старт"
         startButton.setTitle("Старт", for: .normal)
-        startButton.backgroundColor = UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1)
-        startButton.setTitleColor(.white, for: .normal)
+        startButton.backgroundColor = UIColor(red: 0.32, green: 0.50, blue: 0.29, alpha: 1.0)
+        startButton.setTitleColor(UIColor(red: 0.99, green: 0.91, blue: 0.64, alpha: 1.0), for: .normal)
         startButton.layer.cornerRadius = 10
-        startButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .medium)
+        startButton.titleLabel?.font = .systemFont(ofSize: 25, weight: .bold)
         startButton.addTarget(self, action: #selector(startRun), for: .touchUpInside)
         view.addSubview(startButton)
         startButton.translatesAutoresizingMaskIntoConstraints = false
@@ -124,9 +142,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         // Кнопка "Пауза"/"Продолжить"
         pauseContinueButton.setTitle("Пауза", for: .normal)
         pauseContinueButton.backgroundColor = .gray
-        pauseContinueButton.setTitleColor(.white, for: .normal)
+        pauseContinueButton.setTitleColor(UIColor(red: 0.32, green: 0.50, blue: 0.29, alpha: 1.0), for: .normal)
         pauseContinueButton.layer.cornerRadius = 10
-        pauseContinueButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .medium)
+        pauseContinueButton.titleLabel?.font = .systemFont(ofSize: 23, weight: .bold)
         pauseContinueButton.addTarget(self, action: #selector(pauseRun), for: .touchUpInside)
         view.addSubview(pauseContinueButton)
         pauseContinueButton.translatesAutoresizingMaskIntoConstraints = false
@@ -140,10 +158,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
         // Кнопка "Завершить"
         stopButton.setTitle("Завершить", for: .normal)
-        stopButton.backgroundColor = UIColor(red: 0.8392, green: 0, blue: 0, alpha: 1.0)
-        stopButton.setTitleColor(.white, for: .normal)
+        stopButton.backgroundColor = UIColor(red: 0.91, green: 0.60, blue: 0.23, alpha: 1.0).withAlphaComponent(0.8)
+        stopButton.setTitleColor(UIColor(red: 0.32, green: 0.50, blue: 0.29, alpha: 1.0), for: .normal)
         stopButton.layer.cornerRadius = 10
-        stopButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .medium)
+        stopButton.titleLabel?.font = .systemFont(ofSize: 23, weight: .bold)
         stopButton.addTarget(self, action: #selector(stopRun), for: .touchUpInside)
         view.addSubview(stopButton)
         stopButton.translatesAutoresizingMaskIntoConstraints = false
@@ -174,7 +192,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         view.gestureRecognizers?.first(where: { $0 is UISwipeGestureRecognizer })?.isEnabled = !isRunning
 
         pauseContinueButton.setTitle(isPaused ? "Продолжить" : "Пауза", for: .normal)
-        pauseContinueButton.backgroundColor = isPaused ? UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1) : .gray
+        pauseContinueButton.backgroundColor = isPaused ? UIColor(red: 0.96, green: 0.80, blue: 0.27, alpha: 1.0).withAlphaComponent(0.8) : UIColor(red: 0.99, green: 0.91, blue: 0.64, alpha: 1.0).withAlphaComponent(0.8)
     }
 
     @objc private func backPressed() {
@@ -353,7 +371,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let polyline = overlay as? MKPolyline {
             let renderer = MKPolylineRenderer(polyline: polyline)
-            renderer.strokeColor = UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1)
+            renderer.strokeColor = UIColor(red: 0.32, green: 0.50, blue: 0.29, alpha: 1.0)
             renderer.lineWidth = 6.0
             return renderer
         }
