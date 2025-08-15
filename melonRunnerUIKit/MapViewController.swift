@@ -107,7 +107,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
         // Кнопка "Старт"
         startButton.setTitle("Старт", for: .normal)
-        startButton.backgroundColor = .green
+        startButton.backgroundColor = UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1)
         startButton.setTitleColor(.white, for: .normal)
         startButton.layer.cornerRadius = 10
         startButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .medium)
@@ -140,7 +140,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
         // Кнопка "Завершить"
         stopButton.setTitle("Завершить", for: .normal)
-        stopButton.backgroundColor = .red
+        stopButton.backgroundColor = UIColor(red: 0.8392, green: 0, blue: 0, alpha: 1.0)
         stopButton.setTitleColor(.white, for: .normal)
         stopButton.layer.cornerRadius = 10
         stopButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .medium)
@@ -159,7 +159,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
         locationManager.allowsBackgroundLocationUpdates = true
+
+        mapView.showsUserLocation = true
+        mapView.userTrackingMode = .follow
     }
 
     private func updateButtons() {
@@ -169,7 +174,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         view.gestureRecognizers?.first(where: { $0 is UISwipeGestureRecognizer })?.isEnabled = !isRunning
 
         pauseContinueButton.setTitle(isPaused ? "Продолжить" : "Пауза", for: .normal)
-        pauseContinueButton.backgroundColor = isPaused ? .green : .blue
+        pauseContinueButton.backgroundColor = isPaused ? UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1) : .gray
     }
 
     @objc private func backPressed() {
@@ -345,27 +350,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         }
     }
 
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        if annotation is UserAnnotation {
-            let identifier = "userAnnotation"
-            var view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-            if view == nil {
-                view = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-                let image = UIImage(systemName: "person.circle.fill")?.withTintColor(.yellow)
-                view?.image = image
-                view?.canShowCallout = false
-            } else {
-                view?.annotation = annotation
-            }
-            return view
-        }
-        return nil
-    }
-
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let polyline = overlay as? MKPolyline {
             let renderer = MKPolylineRenderer(polyline: polyline)
-            renderer.strokeColor = .yellow
+            renderer.strokeColor = UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1)
             renderer.lineWidth = 6.0
             return renderer
         }
