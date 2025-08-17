@@ -22,7 +22,7 @@ final class MenuView: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.title = "Главная"
-        view.backgroundColor = .white
+        view.backgroundColor = .systemBackground
 
         setupUI()
         setupLayout()
@@ -31,7 +31,8 @@ final class MenuView: UIViewController {
     private func setupUI() {
 
         button.setTitle("Open running map", for: .normal)
-        button.backgroundColor = UIColor(red: 93/255, green: 99/255, blue: 209/255, alpha: 1)
+        //button.backgroundColor = UIColor(red: 0.96, green: 0.80, blue: 0.27, alpha: 1.0)
+        button.backgroundColor = UIColor(named: "ButtonColor")
         button.layer.cornerRadius = 32
 
         button.addTarget(self, action: #selector(openMap), for: .touchUpInside)

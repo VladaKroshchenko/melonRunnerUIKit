@@ -29,6 +29,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private let startButton = UIButton(type: .system)
     private let pauseContinueButton = UIButton(type: .system)
     private let stopButton = UIButton(type: .system)
+    private let backButton = UIButton()
 
     // Логика
     private let locationManager = CLLocationManager()
@@ -69,6 +70,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         super.viewDidLoad()
         setupUI()
         setupLocationManager()
+        setupNavigationItem()
         requestPermissions()
     }
 
@@ -172,6 +174,28 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
             stopButton.heightAnchor.constraint(equalToConstant: 50)
         ])
         stopButton.isHidden = true
+
+        // Кнопка "назад"
+        let chevron = UIImage(systemName: "chevron.backward", withConfiguration: UIImage.SymbolConfiguration(weight: .bold))
+        backButton.setImage(chevron, for: .normal)
+        backButton.backgroundColor = .white
+        backButton.alpha = 1
+        backButton.layer.borderColor = UIColor.black.cgColor
+        backButton.layer.borderWidth = 1
+        backButton.setTitleColor(.black, for: .normal)
+        backButton.tintColor = .black
+        backButton.layer.cornerRadius = 12
+        NSLayoutConstraint.activate([
+            backButton.widthAnchor.constraint(equalToConstant: 32),
+            backButton.heightAnchor.constraint(equalToConstant: 32)
+        ])
+    }
+
+    private func setupNavigationItem() {
+        backButton.addTarget(self, action: #selector(backPressed), for: .touchUpInside)
+
+        let customBackButton = UIBarButtonItem(customView: backButton)
+        navigationItem.leftBarButtonItem = customBackButton
     }
 
     private func setupLocationManager() {
@@ -196,7 +220,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func backPressed() {
-        dismiss(animated: true, completion: nil)
+        // dismiss(animated: true, completion: nil) // Эта строка для закрытия карты если она открыта модалкой
+        navigationController?.popViewController(animated: true)
     }
 
     @objc private func startRun() {
