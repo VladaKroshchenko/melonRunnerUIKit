@@ -291,8 +291,25 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     @objc private func updateTimer() {
         let runManager = RunManager.shared
 
-        guard let startTime = runManager.startTime else { return }
-        let currentTime = runManager.accumulatedTime + Date().timeIntervalSince(startTime)
+        guard let startTime = runManager.startTime else {
+            // Если startTime отсутствует, показываем только накопленное время
+            let currentTime = runManager.accumulatedTime
+            let hours = Int(currentTime) / 3600
+            let minutes = (Int(currentTime) % 3600) / 60
+            let seconds = Int(currentTime) % 60
+            timeLabel.text = String(format: "⏱️ Время: %02d:%02d:%02d", hours, minutes, seconds)
+            return
+        }
+
+        let currentTime: TimeInterval
+        if runManager.isPaused || !runManager.isRunning {
+            // Если пробежка на паузе или завершена, используем только накопленное время
+            currentTime = runManager.accumulatedTime
+        } else {
+            // Если пробежка активна, добавляем время с момента старта
+            currentTime = runManager.accumulatedTime + Date().timeIntervalSince(startTime)
+        }
+
         let hours = Int(currentTime) / 3600
         let minutes = (Int(currentTime) % 3600) / 60
         let seconds = Int(currentTime) % 60
