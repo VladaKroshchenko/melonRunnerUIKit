@@ -247,6 +247,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         runManager.isPaused = false
         runManager.startTime = Date()
         runManager.accumulatedTime = 0.0
+        runManager.totalTime = 0.0
         runManager.locations.removeAll()
         runManager.totalDistance = 0.0
         runManager.calories = 0.0
@@ -265,12 +266,14 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         if runManager.isPaused {
             timer?.invalidate()
             runManager.accumulatedTime += Date().timeIntervalSince(runManager.startTime ?? Date())
+            runManager.totalTime = runManager.accumulatedTime
             locationManager.stopUpdatingLocation()
             // Не останавливаем calorieQuery, чтобы сохранить данные
         } else {
             runManager.startTime = Date()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
             locationManager.startUpdatingLocation()
+            runManager.totalTime = runManager.accumulatedTime
             // Запрос калорий уже активен, не создаём новый
         }
         updateButtons()
@@ -281,6 +284,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
         runManager.isRunning = false
         runManager.isPaused = false
+        runManager.totalTime = 0.0
         timer?.invalidate()
         stopCalorieUpdates()
         fetchCalories()
@@ -290,6 +294,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
     @objc private func updateTimer() {
         let runManager = RunManager.shared
+
+        runManager.totalTime += 1.0
 
         guard let startTime = runManager.startTime else {
             // Если startTime отсутствует, показываем только накопленное время
