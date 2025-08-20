@@ -353,15 +353,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         updateButtons()
     }
 
-//    private func updateSpeed() {
-//        if runManager.isRunning && !runManager.isPaused && runTimer.totalTime > 0 {
-//            let speed = runManager.totalDistance / (runTimer.totalTime / 3600.0)
-//            speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
-//        } else {
-//            speedNumberLabel.text = "0,0"
-//        }
-//    }
-
     // MARK: - Actions
 
     @objc private func backPressed() {
@@ -542,7 +533,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
                     let lastLocation = runManager.locations[runManager.locations.count - 2]
                     runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
                     self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
-                    //self?.updateSpeed()
                 }
 
                 self?.updateRouteOverlay()
