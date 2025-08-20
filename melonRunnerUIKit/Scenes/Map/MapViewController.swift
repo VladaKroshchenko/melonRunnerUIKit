@@ -317,7 +317,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateButtons() {
-        let runManager = RunManager.shared
 
         buttonsStack.arrangedSubviews.forEach { buttonsStack.removeArrangedSubview($0); $0.isHidden = true }
 
@@ -346,24 +345,22 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
     private func updateUI() {
         // Обновляем метки времени, дистанции и калорий
-        updateTimer()
+        updateLabels()
         distanceNumberLabel.text = decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
         caloriesNumberLabel.text = integerFormatter.string(from: NSNumber(value: runManager.calories)) ?? "0"
-        updateSpeed()
 
         // Обновляем кнопки в зависимости от состояния пробежки
         updateButtons()
     }
 
-    private func updateSpeed() {
-        let runManager = RunManager.shared
-        if runManager.isRunning && !runManager.isPaused && runTimer.totalTime > 0 {
-            let speed = runManager.totalDistance / (runTimer.totalTime / 3600.0)
-            speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
-        } else {
-            speedNumberLabel.text = "0,0"
-        }
-    }
+//    private func updateSpeed() {
+//        if runManager.isRunning && !runManager.isPaused && runTimer.totalTime > 0 {
+//            let speed = runManager.totalDistance / (runTimer.totalTime / 3600.0)
+//            speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
+//        } else {
+//            speedNumberLabel.text = "0,0"
+//        }
+//    }
 
     // MARK: - Actions
 
@@ -383,7 +380,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         distanceNumberLabel.text = decimalFormatter.string(from: NSNumber(value: 0.0)) ?? "0,0"
         caloriesNumberLabel.text = integerFormatter.string(from: NSNumber(value: 0.0)) ?? "0"
         speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: 0.0)) ?? "0,0"
-        timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
+        timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
         startCalorieUpdates()
         updateButtons()
     }
@@ -397,7 +394,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
             locationManager.stopUpdatingLocation()
         } else {
             runTimer.startTimer()
-            timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
+            timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
             locationManager.startUpdatingLocation()
         }
         updateButtons()
@@ -415,9 +412,17 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         updateButtons()
     }
 
-    @objc private func updateTimer() {
+    @objc private func updateLabels() {
+        // Обновление таймера
         timeLabel.text = String(formatTime(from: runTimer.totalTime))
-        updateSpeed()
+
+        // Обновление скорости
+        if runManager.isRunning && !runManager.isPaused && runTimer.totalTime > 0 {
+            let speed = runManager.totalDistance / (runTimer.totalTime / 3600.0)
+            speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
+        } else {
+            speedNumberLabel.text = "0,0"
+        }
     }
 
     private func startCalorieUpdates() {
@@ -497,7 +502,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         // Восстанавливаем состояние UI на основе текущего состояния пробежки
         if runManager.isRunning {
             // Запускаем таймер, если пробежка активна
-            timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
+            timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
 
             // Если пробежка не на паузе, продолжаем обновлять местоположение
             if !runManager.isPaused {
@@ -537,7 +542,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
                     let lastLocation = runManager.locations[runManager.locations.count - 2]
                     runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
                     self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
-                    self?.updateSpeed()
+                    //self?.updateSpeed()
                 }
 
                 self?.updateRouteOverlay()
