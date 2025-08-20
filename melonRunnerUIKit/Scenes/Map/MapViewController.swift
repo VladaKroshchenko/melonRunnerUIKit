@@ -41,6 +41,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private var userAnnotation: UserAnnotation?
     private var routeOverlay: MKPolyline?
 
+    let runTimer = RunTimer.shared
+    let runManager = RunManager.shared
+
     // Цвет фона (тёплый пастельно-оранжевый)
     let backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
 
@@ -209,7 +212,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateButtons() {
-        let runManager = RunManager.shared
 
         startButton.isHidden = runManager.isRunning
         pauseContinueButton.isHidden = !runManager.isRunning
@@ -221,8 +223,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateUI() {
-        let runManager = RunManager.shared
-
         // Обновляем метки времени, дистанции и калорий
         updateTimer()
         distanceLabel.text = String(format: "👣 Дистанция: %.2f км", runManager.totalDistance)
@@ -241,16 +241,13 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func startRun() {
-        let runManager = RunManager.shared
 
         runManager.isRunning = true
         runManager.isPaused = false
-        runManager.startTime = Date()
-        runManager.accumulatedTime = 0.0
-        runManager.totalTime = 0.0
         runManager.locations.removeAll()
         runManager.totalDistance = 0.0
         runManager.calories = 0.0
+        runTimer.startTimer()
         timeLabel.text = "⏱️ Время: 00:00:00"
         distanceLabel.text = "👣 Дистанция: 0.00 км"
         caloriesLabel.text = "🔥 Калории: 0 ккал"
@@ -260,31 +257,27 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func pauseRun() {
-        let runManager = RunManager.shared
 
         runManager.isPaused.toggle()
         if runManager.isPaused {
+            runTimer.pauseTimer()
             timer?.invalidate()
-            runManager.accumulatedTime += Date().timeIntervalSince(runManager.startTime ?? Date())
-            runManager.totalTime = runManager.accumulatedTime
             locationManager.stopUpdatingLocation()
             // Не останавливаем calorieQuery, чтобы сохранить данные
         } else {
-            runManager.startTime = Date()
+            runTimer.startTimer()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
             locationManager.startUpdatingLocation()
-            runManager.totalTime = runManager.accumulatedTime
             // Запрос калорий уже активен, не создаём новый
         }
         updateButtons()
     }
 
     @objc private func stopRun() {
-        let runManager = RunManager.shared
+        runTimer.stopTimer()
 
         runManager.isRunning = false
         runManager.isPaused = false
-        runManager.totalTime = 0.0
         timer?.invalidate()
         stopCalorieUpdates()
         fetchCalories()
@@ -293,38 +286,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func updateTimer() {
-        let runManager = RunManager.shared
-
-        runManager.totalTime += 1.0
-
-        guard let startTime = runManager.startTime else {
-            // Если startTime отсутствует, показываем только накопленное время
-            let currentTime = runManager.accumulatedTime
-            let hours = Int(currentTime) / 3600
-            let minutes = (Int(currentTime) % 3600) / 60
-            let seconds = Int(currentTime) % 60
-            timeLabel.text = String(format: "⏱️ Время: %02d:%02d:%02d", hours, minutes, seconds)
-            return
-        }
-
-        let currentTime: TimeInterval
-        if runManager.isPaused || !runManager.isRunning {
-            // Если пробежка на паузе или завершена, используем только накопленное время
-            currentTime = runManager.accumulatedTime
-        } else {
-            // Если пробежка активна, добавляем время с момента старта
-            currentTime = runManager.accumulatedTime + Date().timeIntervalSince(startTime)
-        }
-
-        let hours = Int(currentTime) / 3600
-        let minutes = (Int(currentTime) % 3600) / 60
-        let seconds = Int(currentTime) % 60
-        timeLabel.text = String(format: "⏱️ Время: %02d:%02d:%02d", hours, minutes, seconds)
+        timeLabel.text = "⏱️ Время: \(String(formatTime(from: runTimer.totalTime)))"
     }
 
     private func startCalorieUpdates() {
         guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
-        guard let startTime = RunManager.shared.startTime else { return }
+        guard let startTime = runTimer.startTime else { return }
 
         // Создаём новый запрос только если calorieQuery не существует
         if calorieQuery == nil {
@@ -351,9 +318,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateCalories(from collection: HKStatisticsCollection?) {
-        let runManager = RunManager.shared
 
-        guard let collection = collection, let startTime = runManager.startTime else { return }
+        guard let collection = collection, let startTime = runTimer.startTime else { return }
         let now = Date()
         var totalCalories: Double = runManager.calories // Сохраняем текущее значение
         collection.enumerateStatistics(from: startTime, to: now) { statistics, _ in
@@ -365,6 +331,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
             }
         }
         DispatchQueue.main.async { [weak self] in
+            let runManager = RunManager.shared
             runManager.calories = totalCalories
             self?.caloriesLabel.text = String(format: "🔥 Калории: %.0f ккал", totalCalories)
         }
@@ -380,7 +347,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private func fetchCalories() {
         guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
         let now = Date()
-        let startOfRun = RunManager.shared.startTime ?? now
+        let startOfRun = runTimer.startTime ?? now
         let predicate = HKQuery.predicateForSamples(withStart: startOfRun, end: now, options: .strictStartDate)
 
         let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
@@ -396,7 +363,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func restoreRunState() {
-        let runManager = RunManager.shared
 
         // Восстанавливаем состояние UI на основе текущего состояния пробежки
         if runManager.isRunning {

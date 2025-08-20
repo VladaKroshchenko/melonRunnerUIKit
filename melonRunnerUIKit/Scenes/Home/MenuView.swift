@@ -19,6 +19,7 @@ final class MenuView: UIViewController {
     private let circleView = UIView()
 
     let runManager = RunManager.shared
+    let runTimer = RunTimer.shared
     private var updateTimer: Timer?
 
 
@@ -136,6 +137,11 @@ final class MenuView: UIViewController {
         // Создаем таймер, который будет обновлять текст кнопки каждую секунду
         updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.setupButtonText()
+            DispatchQueue.main.async { [self] in
+                self?.timeLabel.text = formatTime(from: self?.runTimer.totalTime ?? 0.0)
+                self?.distanceLabel.text = String(format: "%.2f км", self?.runManager.totalDistance ?? 0.0)
+                self?.caloriesLabel.text = String(format: "%.0f ккал", self?.runManager.calories ?? 0.0)
+            }
         }
     }
 
@@ -144,41 +150,19 @@ final class MenuView: UIViewController {
         if runManager.isRunning && !runManager.isPaused {
             runLabel.text = "Текущая пробежка"
             emojiLabel.text = "🏃🏻‍➡️"
-
-            DispatchQueue.main.async {
-                self.timeLabel.text = formatTime(from: self.runManager.accumulatedTime + self.runManager.totalTime)
-                self.distanceLabel.text = String(format: "%.2f км", self.runManager.totalDistance)
-                self.caloriesLabel.text = String(format: "%.0f ккал", self.runManager.calories)
-            }
+            
         } else if runManager.isPaused && runManager.isRunning {
             runLabel.text = "Пробежка на паузе"
-            DispatchQueue.main.async {
-                self.timeLabel.text = formatTime(from: self.runManager.accumulatedTime + self.runManager.totalTime)
-            }
+            emojiLabel.text = "🚶🏻‍➡️"
 
-        } else if !runManager.isPaused && !runManager.isRunning && runManager.accumulatedTime == 0 {
+        } else if !runManager.isPaused && !runManager.isRunning && runTimer.totalTime == 0 {
             runLabel.text = "Пробежка не начата"
-            DispatchQueue.main.async {
-                self.timeLabel.text = formatTime(from: self.runManager.accumulatedTime + self.runManager.totalTime)
-            }
+            emojiLabel.text = "🧍🏻"
 
-            caloriesLabel.text = "0 ккал"
-        } else if !runManager.isPaused && !runManager.isRunning && runManager.accumulatedTime > 0 {
+        } else if !runManager.isPaused && !runManager.isRunning && runTimer.totalTime > 0 {
             runLabel.text = "Пробежка окончена"
-            DispatchQueue.main.async {
-                self.timeLabel.text = formatTime(from: self.runManager.accumulatedTime + self.runManager.totalTime)
-            }
-
-            caloriesLabel.text = String(format: "%.0f ккал", runManager.calories)
+            emojiLabel.text = "🧍🏻"
         }
-
-
-
-        //timeLabel.text = "01:09:44"
-        //distanceLabel.text = "10,9 km"
-        //caloriesLabel.text = "539 kcal"
-        //emojiLabel.text = "🏃🏻‍➡️"
-
     }
 
     // MARK: - Actions
