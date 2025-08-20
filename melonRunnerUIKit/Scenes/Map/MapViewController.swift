@@ -49,6 +49,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private let decimalFormatter = NumberFormatter()
     private let integerFormatter = NumberFormatter()
 
+    let runTimer = RunTimer.shared
+    let runManager = RunManager.shared
+
     // Цвет фона (тёплый пастельно-оранжевый)
     let backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
 
@@ -301,7 +304,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateButtons() {
-        let runManager = RunManager.shared
 
         buttonsStack.arrangedSubviews.forEach { buttonsStack.removeArrangedSubview($0); $0.isHidden = true }
 
@@ -329,8 +331,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateUI() {
-        let runManager = RunManager.shared
-
         // Обновляем метки времени, дистанции и калорий
         updateTimer()
         distanceNumberLabel.text = decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
@@ -348,13 +348,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         navigationController?.popViewController(animated: true)
     }
 
-    @objc private func startRun() {
-        let runManager = RunManager.shared
-
+ @objc private func startRun() {
         runManager.isRunning = true
         runManager.isPaused = false
-        runManager.startTime = Date()
-        runManager.accumulatedTime = 0.0
         runManager.locations.removeAll()
         runManager.totalDistance = 0.0
         runManager.calories = 0.0
@@ -368,16 +364,15 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func pauseRun() {
-        let runManager = RunManager.shared
 
         runManager.isPaused.toggle()
         if runManager.isPaused {
+            runTimer.pauseTimer()
             timer?.invalidate()
-            runManager.accumulatedTime += Date().timeIntervalSince(runManager.startTime ?? Date())
             locationManager.stopUpdatingLocation()
             // Не останавливаем calorieQuery, чтобы сохранить данные
         } else {
-            runManager.startTime = Date()
+            runTimer.startTimer()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
             locationManager.startUpdatingLocation()
             // Запрос калорий уже активен, не создаём новый
@@ -386,7 +381,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func stopRun() {
-        let runManager = RunManager.shared
+        runTimer.stopTimer()
 
         runManager.isRunning = false
         runManager.isPaused = false
@@ -398,17 +393,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func updateTimer() {
-        let runManager = RunManager.shared
-
-        guard let startTime = runManager.startTime else {
-            // Если startTime отсутствует, показываем только накопленное время
-            let currentTime = runManager.accumulatedTime
-            let hours = Int(currentTime) / 3600
-            let minutes = (Int(currentTime) % 3600) / 60
-            let seconds = Int(currentTime) % 60
-            timeLabel.text = String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-            updateSpeed(with: currentTime)
-            return
+        timeLabel.text = String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        updateSpeed(with: runTimer.totalTime)
         }
 
         let currentTime: TimeInterval
@@ -435,7 +421,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
     private func startCalorieUpdates() {
         guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
-        guard let startTime = RunManager.shared.startTime else { return }
+        guard let startTime = runTimer.startTime else { return }
 
         // Создаём новый запрос только если calorieQuery не существует
         if calorieQuery == nil {
@@ -462,9 +448,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateCalories(from collection: HKStatisticsCollection?) {
-        let runManager = RunManager.shared
 
-        guard let collection = collection, let startTime = runManager.startTime else { return }
+        guard let collection = collection, let startTime = runTimer.startTime else { return }
         let now = Date()
         var totalCalories: Double = runManager.calories // Сохраняем текущее значение
         collection.enumerateStatistics(from: startTime, to: now) { statistics, _ in
@@ -476,6 +461,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
             }
         }
         DispatchQueue.main.async { [weak self] in
+            let runManager = RunManager.shared
             runManager.calories = totalCalories
             self?.caloriesNumberLabel.text = self?.integerFormatter.string(from: NSNumber(value: totalCalories)) ?? "0"
         }
@@ -491,7 +477,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private func fetchCalories() {
         guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
         let now = Date()
-        let startOfRun = RunManager.shared.startTime ?? now
+        let startOfRun = runTimer.startTime ?? now
         let predicate = HKQuery.predicateForSamples(withStart: startOfRun, end: now, options: .strictStartDate)
 
         let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
@@ -507,7 +493,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func restoreRunState() {
-        let runManager = RunManager.shared
 
         // Восстанавливаем состояние UI на основе текущего состояния пробежки
         if runManager.isRunning {
