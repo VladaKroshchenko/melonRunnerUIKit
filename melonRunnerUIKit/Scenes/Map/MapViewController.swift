@@ -143,27 +143,36 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
         runningTimeLabel.text = "Время пробежки"
         runningTimeLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        runningTimeLabel.textColor = .darkGray
+        runningTimeLabel.textColor = .black.withAlphaComponent(0.7)
         verticalStack.addArrangedSubview(runningTimeLabel)
 
         let timeRow = UIStackView()
         timeRow.axis = .horizontal
         timeRow.alignment = .center
-        timeRow.spacing = 10
+        timeRow.spacing = 5
+        timeRow.distribution = .fill
         verticalStack.addArrangedSubview(timeRow)
 
         timeLabel.text = "00:00:00"
-        timeLabel.font = .systemFont(ofSize: 30, weight: .bold)
+        timeLabel.font = .systemFont(ofSize: 28, weight: .bold)
         timeLabel.textColor = .black
+        timeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         timeRow.addArrangedSubview(timeLabel)
 
-        let spacer = UIView()
-        timeRow.addArrangedSubview(spacer)
+        let buttonSpacer = UIView()
+        buttonSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        timeRow.addArrangedSubview(buttonSpacer)
 
         buttonsStack = UIStackView()
         buttonsStack.axis = .horizontal
         buttonsStack.spacing = 10
+        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
         timeRow.addArrangedSubview(buttonsStack)
+
+        NSLayoutConstraint.activate([
+            buttonsStack.centerYAnchor.constraint(equalTo: timeLabel.centerYAnchor, constant: -5),
+            buttonsStack.trailingAnchor.constraint(equalTo: timeRow.trailingAnchor)
+        ])
 
         let statsRow = UIStackView()
         statsRow.axis = .horizontal
@@ -185,7 +194,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         distValueStack.spacing = 0
         distValueStack.alignment = .leading
         distanceNumberLabel.text = "0,0"
-        distanceNumberLabel.font = .monospacedDigitSystemFont(ofSize: 24, weight: .bold)
+        distanceNumberLabel.font = .monospacedDigitSystemFont(ofSize: 21, weight: .bold)
         distanceNumberLabel.textColor = .black
         distValueStack.addArrangedSubview(distanceNumberLabel)
         distanceUnitLabel.text = "км"
@@ -209,7 +218,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         calValueStack.spacing = 0
         calValueStack.alignment = .leading
         caloriesNumberLabel.text = "0"
-        caloriesNumberLabel.font = .monospacedDigitSystemFont(ofSize: 24, weight: .bold)
+        caloriesNumberLabel.font = .monospacedDigitSystemFont(ofSize: 21, weight: .bold)
         caloriesNumberLabel.textColor = .black
         calValueStack.addArrangedSubview(caloriesNumberLabel)
         caloriesUnitLabel.text = "ккал"
@@ -233,7 +242,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         speedValueStack.spacing = 0
         speedValueStack.alignment = .leading
         speedNumberLabel.text = "0,0"
-        speedNumberLabel.font = .monospacedDigitSystemFont(ofSize: 24, weight: .bold)
+        speedNumberLabel.font = .monospacedDigitSystemFont(ofSize: 21, weight: .bold)
         speedNumberLabel.textColor = .black
         speedValueStack.addArrangedSubview(speedNumberLabel)
         speedUnitLabel.text = "км/ч"
@@ -254,8 +263,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         startButton.layer.cornerRadius = 10
         startButton.setTitle(nil, for: .normal)
         startButton.addTarget(self, action: #selector(startRun), for: .touchUpInside)
-        startButton.widthAnchor.constraint(equalToConstant: 50).isActive = true
-        startButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        startButton.widthAnchor.constraint(equalToConstant: 40).isActive = true
+        startButton.heightAnchor.constraint(equalToConstant: 40).isActive = true
 
         pauseContinueButton.tintColor = stemAndLegs
         pauseContinueButton.layer.cornerRadius = 10
@@ -265,8 +274,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         pauseContinueButton.layer.shadowOffset = .zero
         pauseContinueButton.setTitle(nil, for: .normal)
         pauseContinueButton.addTarget(self, action: #selector(pauseRun), for: .touchUpInside)
-        pauseContinueButton.widthAnchor.constraint(equalToConstant: 50).isActive = true
-        pauseContinueButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        pauseContinueButton.widthAnchor.constraint(equalToConstant: 40).isActive = true
+        pauseContinueButton.heightAnchor.constraint(equalToConstant: 40).isActive = true
 
         stopButton.setImage(UIImage(systemName: "stop.fill"), for: .normal)
         stopButton.tintColor = stemAndLegs
@@ -278,8 +287,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         stopButton.layer.cornerRadius = 10
         stopButton.setTitle(nil, for: .normal)
         stopButton.addTarget(self, action: #selector(stopRun), for: .touchUpInside)
-        stopButton.widthAnchor.constraint(equalToConstant: 50).isActive = true
-        stopButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        stopButton.widthAnchor.constraint(equalToConstant: 40).isActive = true
+        stopButton.heightAnchor.constraint(equalToConstant: 40).isActive = true
 
         // Кнопка "назад"
         let chevron = UIImage(systemName: "chevron.backward", withConfiguration: UIImage.SymbolConfiguration(weight: .bold))
@@ -312,12 +321,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         locationManager.startUpdatingLocation()
         locationManager.allowsBackgroundLocationUpdates = true
 
-        mapView.showsUserLocation = true
-        mapView.userTrackingMode = .follow
+        mapView.showsUserLocation = false
     }
 
     private func updateButtons() {
-
         buttonsStack.arrangedSubviews.forEach { buttonsStack.removeArrangedSubview($0); $0.isHidden = true }
 
         if runManager.isRunning {
@@ -360,7 +367,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func startRun() {
-
         runManager.isRunning = true
         runManager.isPaused = false
         runManager.locations.removeAll()
@@ -377,12 +383,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     @objc private func pauseRun() {
-
         runManager.isPaused.toggle()
         if runManager.isPaused {
             runTimer.pauseTimer()
             timer?.invalidate()
             locationManager.stopUpdatingLocation()
+            speedNumberLabel.text = "0,0"
         } else {
             runTimer.startTimer()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
@@ -400,20 +406,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         stopCalorieUpdates()
         fetchCalories()
         mapView.removeOverlays(mapView.overlays)
+        speedNumberLabel.text = "0,0"
         updateButtons()
     }
 
     @objc private func updateLabels() {
-        // Обновление таймера
         timeLabel.text = String(formatTime(from: runTimer.totalTime))
-
-        // Обновление скорости
-        if runManager.isRunning && !runManager.isPaused && runTimer.totalTime > 0 {
-            let speed = runManager.totalDistance / (runTimer.totalTime / 3600.0)
-            speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
-        } else {
-            speedNumberLabel.text = "0,0"
-        }
     }
 
     private func startCalorieUpdates() {
@@ -444,7 +442,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func updateCalories(from collection: HKStatisticsCollection?) {
-
         guard let collection = collection, let startTime = runTimer.startTime else { return }
         let now = Date()
         var totalCalories: Double = runManager.calories
@@ -489,7 +486,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     }
 
     private func restoreRunState() {
-
         // Восстанавливаем состояние UI на основе текущего состояния пробежки
         if runManager.isRunning {
             // Запускаем таймер, если пробежка активна
@@ -498,35 +494,37 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
             // Если пробежка не на паузе, продолжаем обновлять местоположение
             if !runManager.isPaused {
                 locationManager.startUpdatingLocation()
+            } else {
+                speedNumberLabel.text = "0,0"
             }
         }
 
         updateUI()
     }
 
-    //MARK: - Map & Location logic
+    // MARK: - Map & Location Logic
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-            guard let newLocation = locations.last else { return }
+        guard let newLocation = locations.last else { return }
 
-            // Обновляем аннотацию пользователя
-            DispatchQueue.main.async { [weak self] in
+        // Обновляем аннотацию пользователя
+        DispatchQueue.main.async { [weak self] in
+            if let annotation = self?.userAnnotation {
+                annotation.coordinate = newLocation.coordinate
+            } else {
+                self?.userAnnotation = UserAnnotation(coordinate: newLocation.coordinate)
                 if let annotation = self?.userAnnotation {
-                    annotation.coordinate = newLocation.coordinate
-                } else {
-                    self?.userAnnotation = UserAnnotation(coordinate: newLocation.coordinate)
-                    if let annotation = self?.userAnnotation {
-                        self?.mapView.addAnnotation(annotation)
-                    }
+                    self?.mapView.addAnnotation(annotation)
                 }
             }
+        }
 
-            // Обновляем маршрут и дистанцию только во время активной пробежки
-            let runManager = RunManager.shared
+        // Обновляем маршрут и дистанцию только во время активной пробежки
+        let runManager = RunManager.shared
         if runManager.isRunning && !runManager.isPaused {
             runManager.locations.append(newLocation)
             DispatchQueue.main.async { [weak self] in
-                self?.routeCoordinates = runManager.locations.map { $0.coordinate } // Если при перезаходе потеряется черкаш, искать его тут скорее всего
+                self?.routeCoordinates = runManager.locations.map { $0.coordinate }
 
                 // Обновление дистанции
                 if runManager.locations.count > 1 {
@@ -534,6 +532,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
                     runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
                     self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
                 }
+
+                // Обновление скорости на основе данных CLLocation
+                let speed = newLocation.speed >= 0 ? newLocation.speed * 3.6 : 0.0 // Convert m/s to km/h
+                self?.speedNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
 
                 self?.updateRouteOverlay()
             }
@@ -580,7 +582,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         }
     }
 
-    //MARK: - Permissions
+    // MARK: - Permissions
 
     private func requestPermissions() {
         locationManager.delegate = self
