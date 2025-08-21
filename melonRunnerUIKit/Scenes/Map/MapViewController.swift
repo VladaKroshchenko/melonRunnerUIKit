@@ -321,7 +321,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         locationManager.startUpdatingLocation()
         locationManager.allowsBackgroundLocationUpdates = true
 
-        mapView.showsUserLocation = false
+        mapView.showsUserLocation = true
+        mapView.userTrackingMode = .follow
     }
 
     private func updateButtons() {
