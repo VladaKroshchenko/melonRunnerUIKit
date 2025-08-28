@@ -52,6 +52,16 @@ final class MenuView: UIViewController {
         setupButtonText()
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+//        // Очищаем LocationManager
+//        if let weatherView = weatherHostingController?.rootView {
+//            weatherView.resetLocationManager()
+//        }
+    }
+
+
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
 

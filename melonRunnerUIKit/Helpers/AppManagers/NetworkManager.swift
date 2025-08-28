@@ -20,7 +20,7 @@ final class NetworkManager {
     private init() {}
 
     func loadData(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void) {
-        guard let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?lat=\(latitude)&lon=\(longitude)&appid=\(Self.appId)&units=metric") else {
+        guard let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?lat=\(latitude)&lon=\(longitude)&appid=\(Self.appId)&units=metric&lang=ru") else {
             completion(.failure(NetworkError.invalidURL))
             return
         }

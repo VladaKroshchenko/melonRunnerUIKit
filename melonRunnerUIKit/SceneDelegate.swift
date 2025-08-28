@@ -17,6 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = UINavigationController(rootViewController: MenuView())
         window?.makeKeyAndVisible()
+        LocationManager.shared.startUpdatingLocation()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

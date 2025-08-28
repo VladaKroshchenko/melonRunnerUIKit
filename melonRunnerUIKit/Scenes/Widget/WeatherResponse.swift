@@ -29,14 +29,6 @@ struct WeatherResponse: Codable {
     let sys: Sys
     let name: String
 
-    var iconURL: URL? {
-        guard let string = weather.first?.icon else {
-            return nil
-        }
-
-        return URL(string: "https://openweathermap.org/img/wn/\(string)@4x.png")
-    }
-
     var sunsetDate: Date {
         Date(timeIntervalSince1970: TimeInterval(sys.sunset))
     }

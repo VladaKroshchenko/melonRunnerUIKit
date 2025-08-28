@@ -19,11 +19,11 @@ class UserAnnotation: NSObject, MKAnnotation {
     }
 }
 
-class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
+class MapViewController: UIViewController, MKMapViewDelegate {
 
     // MARK: - Elements
     // UI элементы
-    private let mapView = MKMapView()
+    private var mapView = MKMapView()
     private let runningTimeLabel = UILabel()
     private let timeLabel = UILabel()
     private let distanceNumberLabel = UILabel()
@@ -39,7 +39,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     private var buttonsStack: UIStackView!
 
     // Логика
-    private let locationManager = CLLocationManager()
     private var routeCoordinates: [CLLocationCoordinate2D] = []
     private let healthStore = HKHealthStore()
     private var timer: Timer?
@@ -73,6 +72,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(locationDidUpdate(_:)), name: .locationDidUpdate, object: nil)
+
+
         decimalFormatter.locale = Locale(identifier: "ru_RU")
         decimalFormatter.numberStyle = .decimal
         decimalFormatter.minimumFractionDigits = 1
@@ -81,8 +84,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         integerFormatter.numberStyle = .decimal
         integerFormatter.minimumFractionDigits = 0
         integerFormatter.maximumFractionDigits = 0
+
         setupUI()
-        setupLocationManager()
+        // setupLocationManager()
         setupNavigationItem()
         requestPermissions()
     }
@@ -98,8 +102,11 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         view.backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
 
         // Настройка карты
+        mapView = MKMapView(frame: view.bounds)
         mapView.delegate = self
         mapView.mapType = .standard
+        mapView.showsUserLocation = true
+        mapView.userTrackingMode = .follow
         view.addSubview(mapView)
         mapView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -314,16 +321,16 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         navigationItem.leftBarButtonItem = customBackButton
     }
 
-    private func setupLocationManager() {
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.startUpdatingLocation()
-        locationManager.allowsBackgroundLocationUpdates = true
-
-        mapView.showsUserLocation = true
-        mapView.userTrackingMode = .follow
-    }
+//    private func setupLocationManager() {
+//        locationManager.delegate = self
+//        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+//        locationManager.requestWhenInUseAuthorization()
+//        locationManager.startUpdatingLocation()
+//        locationManager.allowsBackgroundLocationUpdates = true
+//
+//        mapView.showsUserLocation = true
+//        mapView.userTrackingMode = .follow
+//    }
 
     private func updateButtons() {
         buttonsStack.arrangedSubviews.forEach { buttonsStack.removeArrangedSubview($0); $0.isHidden = true }
@@ -388,12 +395,14 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         if runManager.isPaused {
             runTimer.pauseTimer()
             timer?.invalidate()
-            locationManager.stopUpdatingLocation()
+            //locationManager.stopUpdatingLocation()
+            //LocationManager.shared.stopUpdatingLocation()
             speedNumberLabel.text = "0,0"
         } else {
             runTimer.startTimer()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
-            locationManager.startUpdatingLocation()
+            //locationManager.startUpdatingLocation()
+            //LocationManager.shared.startUpdatingLocation()
         }
         updateButtons()
     }
@@ -494,7 +503,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
             // Если пробежка не на паузе, продолжаем обновлять местоположение
             if !runManager.isPaused {
-                locationManager.startUpdatingLocation()
+                // locationManager.startUpdatingLocation()
+                // LocationManager.shared.startUpdatingLocation()
             } else {
                 speedNumberLabel.text = "0,0"
             }
@@ -505,53 +515,104 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
     // MARK: - Map & Location Logic
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let newLocation = locations.last else { return }
+//    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+//        guard let newLocation = locations.last else { return }
+//
+//        // Отправка уведомления с новым местоположением
+//        NotificationCenter.default.post(name: .locationDidUpdate, object: nil, userInfo: ["location": newLocation])
+//
+//        // Обновляем аннотацию пользователя
+//        DispatchQueue.main.async { [weak self] in
+//            if let annotation = self?.userAnnotation {
+//                annotation.coordinate = newLocation.coordinate
+//            } else {
+//                self?.userAnnotation = UserAnnotation(coordinate: newLocation.coordinate)
+//                if let annotation = self?.userAnnotation {
+//                    self?.mapView.addAnnotation(annotation)
+//                }
+//            }
+//        }
+//
+//        // Обновляем маршрут и дистанцию только во время активной пробежки
+//        let runManager = RunManager.shared
+//        if runManager.isRunning && !runManager.isPaused {
+//            runManager.locations.append(newLocation)
+//            DispatchQueue.main.async { [weak self] in
+//                self?.routeCoordinates = runManager.locations.map { $0.coordinate }
+//
+//                // Обновление дистанции
+//                if runManager.locations.count > 1 {
+//                    let lastLocation = runManager.locations[runManager.locations.count - 2]
+//                    runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
+//                    self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
+//                }
+//
+//                // Обновление скорости на основе данных CLLocation
+//                let speed = newLocation.speed >= 0 ? newLocation.speed * 3.6 : 0.0 // Convert m/s to km/h
+//                self?.speedNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
+//
+//                self?.updateRouteOverlay()
+//            }
+//        }
+//
+//        // Обновление позиции камеры карты
+//        DispatchQueue.main.async { [weak self] in
+//            let region = MKCoordinateRegion(
+//                center: newLocation.coordinate,
+//                latitudinalMeters: 500,
+//                longitudinalMeters: 500
+//            )
+//            self?.mapView.setRegion(region, animated: true)
+//        }
+//    }
 
-        // Обновляем аннотацию пользователя
-        DispatchQueue.main.async { [weak self] in
-            if let annotation = self?.userAnnotation {
-                annotation.coordinate = newLocation.coordinate
-            } else {
-                self?.userAnnotation = UserAnnotation(coordinate: newLocation.coordinate)
-                if let annotation = self?.userAnnotation {
-                    self?.mapView.addAnnotation(annotation)
-                }
-            }
-        }
+    @objc private func locationDidUpdate(_ notification: Notification) {
+            guard let newLocation = notification.userInfo?["location"] as? CLLocation else { return }
 
-        // Обновляем маршрут и дистанцию только во время активной пробежки
-        let runManager = RunManager.shared
-        if runManager.isRunning && !runManager.isPaused {
-            runManager.locations.append(newLocation)
+            // Обновляем аннотацию пользователя
             DispatchQueue.main.async { [weak self] in
-                self?.routeCoordinates = runManager.locations.map { $0.coordinate }
-
-                // Обновление дистанции
-                if runManager.locations.count > 1 {
-                    let lastLocation = runManager.locations[runManager.locations.count - 2]
-                    runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
-                    self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
+                if let annotation = self?.userAnnotation {
+                    annotation.coordinate = newLocation.coordinate
+                } else {
+                    self?.userAnnotation = UserAnnotation(coordinate: newLocation.coordinate)
+                    if let annotation = self?.userAnnotation {
+                        self?.mapView.addAnnotation(annotation)
+                    }
                 }
+            }
 
-                // Обновление скорости на основе данных CLLocation
-                let speed = newLocation.speed >= 0 ? newLocation.speed * 3.6 : 0.0 // Convert m/s to km/h
-                self?.speedNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
+            // Обновляем маршрут и дистанцию только во время активной пробежки
+            let runManager = RunManager.shared
+            if runManager.isRunning && !runManager.isPaused {
+                runManager.locations.append(newLocation)
+                DispatchQueue.main.async { [weak self] in
+                    self?.routeCoordinates = runManager.locations.map { $0.coordinate }
 
-                self?.updateRouteOverlay()
+                    // Обновление дистанции
+                    if runManager.locations.count > 1 {
+                        let lastLocation = runManager.locations[runManager.locations.count - 2]
+                        runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
+                        self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
+                    }
+
+                    // Обновление скорости на основе данных CLLocation
+                    let speed = newLocation.speed >= 0 ? newLocation.speed * 3.6 : 0.0 // Convert m/s to km/h
+                    self?.speedNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
+
+                    self?.updateRouteOverlay()
+                }
+            }
+
+            // Обновление позиции камеры карты
+            DispatchQueue.main.async { [weak self] in
+                let region = MKCoordinateRegion(
+                    center: newLocation.coordinate,
+                    latitudinalMeters: 500,
+                    longitudinalMeters: 500
+                )
+                self?.mapView.setRegion(region, animated: true)
             }
         }
-
-        // Обновление позиции камеры карты
-        DispatchQueue.main.async { [weak self] in
-            let region = MKCoordinateRegion(
-                center: newLocation.coordinate,
-                latitudinalMeters: 500,
-                longitudinalMeters: 500
-            )
-            self?.mapView.setRegion(region, animated: true)
-        }
-    }
 
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let polyline = overlay as? MKPolyline {
@@ -563,13 +624,13 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         return MKOverlayRenderer()
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Ошибка геолокации: \(error.localizedDescription)")
-    }
-
+//    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+//        print("Ошибка геолокации: \(error.localizedDescription)")
+//    }
+//
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
-            locationManager.startUpdatingLocation()
+            LocationManager.shared.startUpdatingLocation()
         }
     }
 
@@ -586,11 +647,11 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
     // MARK: - Permissions
 
     private func requestPermissions() {
-        locationManager.delegate = self
-        locationManager.requestWhenInUseAuthorization()
-        if CLLocationManager.locationServicesEnabled() {
-            locationManager.startUpdatingLocation()
-        }
+//        locationManager.delegate = self
+//        locationManager.requestWhenInUseAuthorization()
+//        if CLLocationManager.locationServicesEnabled() {
+//            LocationManager.shared.startUpdatingLocation()
+//        }
 
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let typesToRead: Set = [HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!]

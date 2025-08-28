@@ -9,13 +9,13 @@
 
 
 import SwiftUI
+import CoreLocation
 
 struct WeatherView: View {
-    @StateObject private var locationManager = LocationManager()
     @StateObject private var viewModel = WeatherViewModel()
 
     var body: some View {
-        VStack {
+        HStack {
             Text("Погода")
                 .font(.headline)
                 .padding(.top, 2)
@@ -33,8 +33,15 @@ struct WeatherView: View {
         .border(Color("MenuBackgroundColor"), width: 5)
         .cornerRadius(16)
         .shadow(radius: 5)
-        .onReceive(locationManager.$location.compactMap { $0 }) { location in
-            viewModel.fetchWeather(for: location)
+        .onAppear {
+            NotificationCenter.default.addObserver(forName: .locationDidUpdate, object: nil, queue: .main) { notification in
+                if let location = notification.userInfo?["location"] as? CLLocation {
+                    viewModel.fetchWeather(for: location)
+                }
+            }
+        }
+        .onDisappear {
+            NotificationCenter.default.removeObserver(self, name: .locationDidUpdate, object: nil)
         }
     }
 }
