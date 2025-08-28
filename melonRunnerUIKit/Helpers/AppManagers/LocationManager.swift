@@ -23,9 +23,6 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
 
     private func requestPermissions() {
         locationManager.requestWhenInUseAuthorization()
-//        if CLLocationManager.locationServicesEnabled() {
-//            locationManager.startUpdatingLocation()
-//        }
     }
 
     // Публичный метод для начала обновления местоположения

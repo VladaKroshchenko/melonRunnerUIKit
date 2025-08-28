@@ -54,11 +54,6 @@ final class MenuView: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-
-//        // Очищаем LocationManager
-//        if let weatherView = weatherHostingController?.rootView {
-//            weatherView.resetLocationManager()
-//        }
     }
 
 
@@ -82,14 +77,9 @@ final class MenuView: UIViewController {
         rectangleView.layer.cornerRadius = 16
 
         // Настройка кнопки
-        //button.setTitle("Open running map", for: .normal)
         button.backgroundColor = UIColor.MenuButton.button
         button.layer.cornerRadius = 30
-        //button.layer.shadowColor = UIColor.black.cgColor
-        //button.layer.shadowOffset = CGSize(width: 0, height: 4)
-        //button.layer.shadowOpacity = 0.25
-        //button.layer.shadowRadius = 3
-
+        
         button.addTarget(self, action: #selector(openMap), for: .touchUpInside)
 
         // Настройка лейблов
