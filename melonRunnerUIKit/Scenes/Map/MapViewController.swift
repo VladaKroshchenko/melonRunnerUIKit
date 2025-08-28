@@ -1,10 +1,3 @@
-//
-//  MapViewController.swift
-//  melonRunnerUIKit
-//
-//  Created by Kroshchenko Vlada on 11.08.2025.
-//
-
 import UIKit
 import MapKit
 import CoreLocation
@@ -323,6 +316,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
 
         mapView.showsUserLocation = true
         mapView.userTrackingMode = .follow
+        mapView.isZoomEnabled = true
+        mapView.isScrollEnabled = true
     }
 
     private func updateButtons() {
@@ -571,6 +566,33 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewD
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
             locationManager.startUpdatingLocation()
         }
+    }
+
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        guard annotation is MKUserLocation else {
+            return nil
+        }
+
+        let id = "UserLocationView"
+        let view = mapView.dequeueReusableAnnotationView(withIdentifier: id) ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
+        view.annotation = annotation
+        view.canShowCallout = false
+
+        let image = UIImage(named: "userAnnotation")?.withTintColor(.black)
+        view.image = image
+
+        if view.layer.animation(forKey: "pulse") == nil {
+            let pulse = CABasicAnimation(keyPath: "transform.scale")
+            pulse.fromValue = 0.95
+            pulse.toValue = 1.05
+            pulse.duration = 1.2
+            pulse.autoreverses = true
+            pulse.repeatCount = .infinity
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            view.layer.add(pulse, forKey: "pulse")
+        }
+
+        return view
     }
 
     private func updateRouteOverlay() {
