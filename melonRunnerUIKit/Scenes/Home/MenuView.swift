@@ -6,10 +6,15 @@
 //
 
 import UIKit
+import SwiftUI
 
 final class MenuView: UIViewController {
 
     // MARK: - Private properties
+    private let contentView: UIView = UIView()
+    private let rectangleView: UIView = UIView()
+    private var weatherHostingController: UIHostingController<WeatherView>!
+
     private let button: UIButton = UIButton()
     private let runLabel = UILabel()
     private let timeLabel = UILabel()
@@ -33,8 +38,8 @@ final class MenuView: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        navigationItem.title = "Главная"
-        navigationItem.titleView?.tintColor = .label
+        //navigationItem.title = "Главная"
+        //navigationItem.titleView?.tintColor = .label
         view.backgroundColor = UIColor.menuBackground
 
         setupUI()
@@ -47,19 +52,34 @@ final class MenuView: UIViewController {
         setupButtonText()
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+    }
+
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+
+        if let weatherView = weatherHostingController?.view {
+            if let borderColor = UIColor(named: "MenuBackgroundColor") {
+                weatherView.layer.borderColor = borderColor.cgColor
+            }
+        }
+    }
+
     // MARK: - Appearance
 
     private func setupUI() {
 
+        // Настройка вью кнопки
+        contentView.backgroundColor = UIColor.menuBackground
+        rectangleView.backgroundColor = UIColor.MenuButton.button
+        rectangleView.layer.cornerRadius = 16
+
         // Настройка кнопки
-        //button.setTitle("Open running map", for: .normal)
         button.backgroundColor = UIColor.MenuButton.button
         button.layer.cornerRadius = 30
-        //button.layer.shadowColor = UIColor.black.cgColor
-        //button.layer.shadowOffset = CGSize(width: 0, height: 4)
-        //button.layer.shadowOpacity = 0.25
-        //button.layer.shadowRadius = 3
-
+        
         button.addTarget(self, action: #selector(openMap), for: .touchUpInside)
 
         // Настройка лейблов
@@ -84,17 +104,38 @@ final class MenuView: UIViewController {
         circleView.layer.cornerRadius = 20
         circleView.clipsToBounds = true
 
-
-        view.addSubview(button)
+        view.addSubview(contentView)
+        contentView.addSubview(button)
+        contentView.addSubview(rectangleView)
         button.addSubview(runLabel)
         button.addSubview(timeLabel)
         button.addSubview(distanceLabel)
         button.addSubview(caloriesLabel)
         button.addSubview(circleView)
         button.addSubview(emojiLabel)
+
+        // Добавление SwiftUI View
+        let weatherView = WeatherView()
+        weatherHostingController = UIHostingController(rootView: weatherView)
+        if let weatherView = weatherHostingController?.view {
+            weatherView.translatesAutoresizingMaskIntoConstraints = false
+            contentView.addSubview(weatherView)
+        }
+
+        // Настройки виджета погоды
+        if let weatherView = weatherHostingController?.view {
+            weatherView.layer.cornerRadius = 16
+            weatherView.clipsToBounds = true
+            weatherView.backgroundColor = .white
+            weatherView.layer.borderWidth = 5
+        }
+
+
     }
 
     private func setupLayout() {
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        rectangleView.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
         runLabel.translatesAutoresizingMaskIntoConstraints = false
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -104,9 +145,30 @@ final class MenuView: UIViewController {
         circleView.translatesAutoresizingMaskIntoConstraints = false
 
 
-        button.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 264).isActive = true
-        button.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24).isActive = true
-        button.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24).isActive = true
+        contentView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
+        contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
+        contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
+        contentView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.5).isActive = true
+
+        rectangleView.topAnchor.constraint(equalTo: contentView.topAnchor).isActive = true
+        rectangleView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor).isActive = true
+        rectangleView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor).isActive = true
+        rectangleView.heightAnchor.constraint(equalToConstant: 220).isActive = true
+
+        // Layout для SwiftUI View
+        if let weatherView = weatherHostingController?.view {
+            NSLayoutConstraint.activate([
+                weatherView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 120),
+                weatherView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+                weatherView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
+                weatherView.bottomAnchor.constraint(equalTo: rectangleView.bottomAnchor, constant: 36)
+                //weatherView.heightAnchor.constraint(equalToConstant: 128)
+            ])
+        }
+
+        button.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 190).isActive = true
+        button.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24).isActive = true
+        button.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24).isActive = true
         button.heightAnchor.constraint(equalToConstant: 64).isActive = true
 
         runLabel.topAnchor.constraint(equalTo: button.topAnchor, constant: 17).isActive = true
@@ -158,6 +220,9 @@ final class MenuView: UIViewController {
         } else if !runManager.isPaused && !runManager.isRunning && runTimer.totalTime == 0 {
             runLabel.text = "Пробежка не начата"
             emojiLabel.text = "🧍🏻"
+            timeLabel.text = "00:00:00"
+            distanceLabel.text = "0.00 км"
+            caloriesLabel.text = "0 ккал"
 
         } else if !runManager.isPaused && !runManager.isRunning && runTimer.totalTime > 0 {
             runLabel.text = "Пробежка окончена"
