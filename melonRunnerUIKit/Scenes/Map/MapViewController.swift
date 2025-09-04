@@ -101,6 +101,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         mapView.delegate = self
         mapView.mapType = .standard
         mapView.showsUserLocation = true
+        mapView.userTrackingMode = .follow
         mapView.isZoomEnabled = true
         mapView.isScrollEnabled = true
         view.addSubview(mapView)
@@ -558,21 +559,13 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         }
 
         recenterTimer?.invalidate()
-        recenterTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
+        recenterTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
             self?.recenterToCurrentLocation()
         }
     }
 
     private func recenterToCurrentLocation() {
-        guard let coordinate = mapView.userLocation.location?.coordinate else { return }
-        let region = MKCoordinateRegion(
-            center: coordinate,
-            latitudinalMeters: 500,
-            longitudinalMeters: 500
-        )
-        isProgrammaticRegionChange = true
-        mapView.setRegion(region, animated: true)
-        isProgrammaticRegionChange = false
+        mapView.setUserTrackingMode(.follow, animated: true)
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
