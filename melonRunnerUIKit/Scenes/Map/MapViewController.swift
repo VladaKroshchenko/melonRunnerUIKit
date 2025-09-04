@@ -38,6 +38,9 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     private var calorieQuery: HKStatisticsCollectionQuery?
     private var userAnnotation: UserAnnotation?
     private var routeOverlay: MKPolyline?
+    private var recenterTimer: Timer?
+    private var isProgrammaticRegionChange: Bool = false
+    private var hasInitialCentered: Bool = false
 
     let runTimer = RunTimer.shared
     let runManager = RunManager.shared
@@ -378,14 +381,10 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         if runManager.isPaused {
             runTimer.pauseTimer()
             timer?.invalidate()
-            //locationManager.stopUpdatingLocation()
-            //LocationManager.shared.stopUpdatingLocation()
             speedNumberLabel.text = "0,0"
         } else {
             runTimer.startTimer()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
-            //locationManager.startUpdatingLocation()
-            //LocationManager.shared.startUpdatingLocation()
         }
         updateButtons()
     }
@@ -501,18 +500,6 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     @objc private func locationDidUpdate(_ notification: Notification) {
             guard let newLocation = notification.userInfo?["location"] as? CLLocation else { return }
 
-            // Обновляем аннотацию пользователя
-            DispatchQueue.main.async { [weak self] in
-                if let annotation = self?.userAnnotation {
-                    annotation.coordinate = newLocation.coordinate
-                } else {
-                    self?.userAnnotation = UserAnnotation(coordinate: newLocation.coordinate)
-                    if let annotation = self?.userAnnotation {
-                        self?.mapView.addAnnotation(annotation)
-                    }
-                }
-            }
-
             // Обновляем маршрут и дистанцию только во время активной пробежки
             let runManager = RunManager.shared
             if runManager.isRunning && !runManager.isPaused {
@@ -535,14 +522,24 @@ class MapViewController: UIViewController, MKMapViewDelegate {
                 }
             }
 
-            // Обновление позиции камеры карты
+            // Обновление позиции камеры карты, если в режиме следования
             DispatchQueue.main.async { [weak self] in
-                let region = MKCoordinateRegion(
-                    center: newLocation.coordinate,
-                    latitudinalMeters: 500,
-                    longitudinalMeters: 500
-                )
-                self?.mapView.setRegion(region, animated: true)
+                guard let self = self else { return }
+                if self.recenterTimer == nil {
+                    self.isProgrammaticRegionChange = true
+                    if !self.hasInitialCentered {
+                        let region = MKCoordinateRegion(
+                            center: newLocation.coordinate,
+                            latitudinalMeters: 500,
+                            longitudinalMeters: 500
+                        )
+                        self.mapView.setRegion(region, animated: false)
+                        self.hasInitialCentered = true
+                    } else {
+                        self.mapView.setCenter(newLocation.coordinate, animated: true)
+                    }
+                    self.isProgrammaticRegionChange = false
+                }
             }
         }
 
@@ -554,6 +551,21 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             return renderer
         }
         return MKOverlayRenderer()
+    }
+
+    func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+        if isProgrammaticRegionChange {
+            return
+        }
+
+        recenterTimer?.invalidate()
+        recenterTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
+            self?.recenterToCurrentLocation()
+        }
+    }
+
+    private func recenterToCurrentLocation() {
+        mapView.setUserTrackingMode(.follow, animated: true)
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
