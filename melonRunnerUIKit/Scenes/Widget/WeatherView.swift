@@ -24,13 +24,13 @@ struct WeatherView: View {
                     .multilineTextAlignment(.leading)
                     .minimumScaleFactor(0.8)
                     .fixedSize(horizontal: false, vertical: true)
-                    .foregroundStyle(Color(.black))
+                    .foregroundStyle(Color("MenuButton/TextColor"))
                 Text(viewModel.temperature)
                     .font(.system(size: 32, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color(.black))
+                    .foregroundStyle(Color("MenuButton/TextColor"))
                 Text(viewModel.tempFeelsLike)
                     .font(.caption)
-                    .foregroundStyle(Color(.darkGray))
+                    .foregroundStyle(Color("MenuButton/TextColor"))
                     //.foregroundColor(.secondary)
             }.layoutPriority(0)
 
@@ -48,7 +48,7 @@ struct WeatherView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .frame(minWidth: 80)
-                    .foregroundStyle(Color(.black))
+                    .foregroundStyle(Color("MenuButton/TextColor"))
             }
         }
         .padding(16)
