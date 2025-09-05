@@ -56,10 +56,6 @@ struct WeatherView: View {
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.MenuButton.circle.opacity(0.3))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color("MenuBackgroundColor"), lineWidth: 2)
-                )
         )
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
 

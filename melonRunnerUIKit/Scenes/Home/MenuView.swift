@@ -28,14 +28,6 @@ final class MenuView: UIViewController {
     private var updateTimer: Timer?
 
 
-
-//    private let scrollView: UIScrollView = UIScrollView()
-//    private let contentView: UIView = UIView()
-
-//    private let imageView: UIImageView = UIImageView()
-
-//    private let activityIndicator: UIActivityIndicatorView = UIActivityIndicatorView(style: .large)
-
     override func viewDidLoad() {
         super.viewDidLoad()
         //navigationItem.title = "Главная"
@@ -54,17 +46,6 @@ final class MenuView: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-    }
-
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-
-        if let weatherView = weatherHostingController?.view {
-            if let borderColor = UIColor(named: "MenuBackgroundColor") {
-                weatherView.layer.borderColor = borderColor.cgColor
-            }
-        }
     }
 
     // MARK: - Appearance
@@ -127,7 +108,6 @@ final class MenuView: UIViewController {
             weatherView.layer.cornerRadius = 16
             weatherView.clipsToBounds = true
             weatherView.backgroundColor = .white
-            weatherView.layer.borderWidth = 5
         }
 
 
