@@ -10,6 +10,7 @@ import Foundation
 struct WeatherResponse: Codable {
     struct Main: Codable {
         let temp: Double
+        let feels_like: Double
         let humidity: Int
         let pressure: Int
     }
@@ -38,3 +39,14 @@ struct WeatherResponse: Codable {
     }
 }
 
+struct GeocodingResponse: Codable {
+    let name: String
+    let local_names: [String: String]?
+    let lat: Double
+    let lon: Double
+    let country: String
+
+    var russianName: String {
+        return local_names?["ru"] ?? name
+    }
+}
