@@ -14,7 +14,6 @@ class UserAnnotation: NSObject, MKAnnotation {
 
 class MapViewController: UIViewController, MKMapViewDelegate {
 
-    // MARK: - Elements
     // UI элементы
     private var mapView = MKMapView()
     private let runningTimeLabel = UILabel()
@@ -33,17 +32,30 @@ class MapViewController: UIViewController, MKMapViewDelegate {
 
     // Логика
     private var routeCoordinates: [CLLocationCoordinate2D] = []
+    private var allRouteCoordinates: [CLLocationCoordinate2D] = [] // Для хранения всех координат маршрута
     private let healthStore = HKHealthStore()
     private var timer: Timer?
-    private var calorieQuery: HKStatisticsCollectionQuery?
     private var userAnnotation: UserAnnotation?
     private var routeOverlay: MKPolyline?
     private var recenterTimer: Timer?
     private var isProgrammaticRegionChange: Bool = false
     private var hasInitialCentered: Bool = false
+    private var routeBuilder: HKWorkoutRouteBuilder?
+    private var workoutRoutes: [HKWorkoutRoute] = []
+    private var routeTimer: Timer?
+    private var lastLocation: CLLocation?
+    private var userWeight: Double = 70.0 // По умолчанию 70 кг
+    private var workoutStartDate: Date?
 
     let runTimer = RunTimer.shared
     let runManager = RunManager.shared
+
+    // Ключи для UserDefaults
+    private let userDefaults = UserDefaults.standard
+    private let routeCoordinatesKey = "RouteCoordinates"
+    private let totalDistanceKey = "TotalDistance"
+    private let caloriesKey = "Calories"
+    private let workoutStartDateKey = "WorkoutStartDate"
 
     // Цвет фона (тёплый пастельно-оранжевый)
     let backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
@@ -71,7 +83,6 @@ class MapViewController: UIViewController, MKMapViewDelegate {
 
         NotificationCenter.default.addObserver(self, selector: #selector(locationDidUpdate(_:)), name: .locationDidUpdate, object: nil)
 
-
         decimalFormatter.locale = Locale(identifier: "ru_RU")
         decimalFormatter.numberStyle = .decimal
         decimalFormatter.minimumFractionDigits = 1
@@ -91,10 +102,16 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         restoreRunState()
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Сохраняем данные пробежки в UserDefaults
+        saveRunState()
+    }
+
     // MARK: - Appearance
 
     private func setupUI() {
-        view.backgroundColor = UIColor(red: 0.98, green: 0.82, blue: 0.50, alpha: 1.0)
+        view.backgroundColor = backgroundColor
 
         // Настройка карты
         mapView = MKMapView(frame: view.bounds)
@@ -113,7 +130,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // Плашка со статистикой с фиксированной шириной
+        // Плашка со статистикой
         let statsView = UIView()
         statsView.backgroundColor = .white.withAlphaComponent(1)
         statsView.layer.cornerRadius = 12
@@ -345,12 +362,9 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     }
 
     private func updateUI() {
-        // Обновляем метки времени, дистанции и калорий
         updateLabels()
         distanceNumberLabel.text = decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
         caloriesNumberLabel.text = integerFormatter.string(from: NSNumber(value: runManager.calories)) ?? "0"
-
-        // Обновляем кнопки в зависимости от состояния пробежки
         updateButtons()
     }
 
@@ -364,16 +378,24 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         runManager.isRunning = true
         runManager.isPaused = false
         runManager.locations.removeAll()
+        allRouteCoordinates.removeAll() // Очищаем все координаты маршрута
         runManager.totalDistance = 0.0
         runManager.calories = 0.0
         runTimer.startTimer()
+        workoutStartDate = Date()
         timeLabel.text = "00:00:00"
         distanceNumberLabel.text = decimalFormatter.string(from: NSNumber(value: 0.0)) ?? "0,0"
         caloriesNumberLabel.text = integerFormatter.string(from: NSNumber(value: 0.0)) ?? "0"
         speedNumberLabel.text = decimalFormatter.string(from: NSNumber(value: 0.0)) ?? "0,0"
         timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
-        startCalorieUpdates()
+        routeBuilder = HKWorkoutRouteBuilder(healthStore: healthStore, device: nil)
+        routeTimer = Timer.scheduledTimer(timeInterval: 60.0, target: self, selector: #selector(savePartialRoute), userInfo: nil, repeats: true)
+        workoutRoutes.removeAll()
+        lastLocation = nil
         updateButtons()
+        updateRouteOverlay() // Обновляем маршрут, чтобы очистить старую линию
+        // Очищаем сохраненные данные в UserDefaults
+        clearSavedRunState()
     }
 
     @objc private func pauseRun() {
@@ -381,167 +403,234 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         if runManager.isPaused {
             runTimer.pauseTimer()
             timer?.invalidate()
+            routeTimer?.invalidate()
             speedNumberLabel.text = "0,0"
+            savePartialRoute() // Сохраняем текущий сегмент маршрута
         } else {
             runTimer.startTimer()
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
+            routeTimer = Timer.scheduledTimer(timeInterval: 60.0, target: self, selector: #selector(savePartialRoute), userInfo: nil, repeats: true)
+            routeBuilder = HKWorkoutRouteBuilder(healthStore: healthStore, device: nil)
         }
         updateButtons()
     }
 
     @objc private func stopRun() {
         runTimer.stopTimer()
-
         runManager.isRunning = false
         runManager.isPaused = false
         timer?.invalidate()
-        stopCalorieUpdates()
-        fetchCalories()
-        mapView.removeOverlays(mapView.overlays)
+        routeTimer?.invalidate()
+        routeTimer = nil
         speedNumberLabel.text = "0,0"
         updateButtons()
+        saveWorkout()
+        // Очищаем сохраненные данные в UserDefaults
+        clearSavedRunState()
     }
 
     @objc private func updateLabels() {
         timeLabel.text = String(formatTime(from: runTimer.totalTime))
     }
 
-    private func startCalorieUpdates() {
-        guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
-        guard let startTime = runTimer.startTime else { return }
-
-        if calorieQuery == nil {
-            let predicate = HKQuery.predicateForSamples(withStart: startTime, end: nil, options: .strictStartDate)
-            let query = HKStatisticsCollectionQuery(
-                quantityType: energyType,
-                quantitySamplePredicate: predicate,
-                options: .cumulativeSum,
-                anchorDate: startTime,
-                intervalComponents: DateComponents(second: 10)
-            )
-
-            query.initialResultsHandler = { [weak self] query, collection, error in
-                self?.updateCalories(from: collection)
+    @objc private func savePartialRoute() {
+        guard let routeBuilder = routeBuilder, !runManager.locations.isEmpty else { return }
+        let locationsToSave = runManager.locations
+        routeBuilder.insertRouteData(locationsToSave) { [weak self] success, error in
+            if success {
+                self?.runManager.locations.removeAll() // Очищаем локации для HealthKit
+            } else {
+                print("Ошибка сохранения части маршрута: \(error?.localizedDescription ?? "")")
             }
-
-            query.statisticsUpdateHandler = { [weak self] query, statistics, collection, error in
-                self?.updateCalories(from: collection)
-            }
-
-            healthStore.execute(query)
-            calorieQuery = query
         }
     }
 
-    private func updateCalories(from collection: HKStatisticsCollection?) {
-        guard let collection = collection, let startTime = runTimer.startTime else { return }
-        let now = Date()
-        var totalCalories: Double = runManager.calories
-        collection.enumerateStatistics(from: startTime, to: now) { statistics, _ in
-            if let sum = statistics.sumQuantity() {
-                let newCalories = sum.doubleValue(for: HKUnit.kilocalorie())
-                if newCalories > 0 {
-                    totalCalories = max(totalCalories, newCalories)
+    private func saveWorkout() {
+        guard let startDate = workoutStartDate else {
+            resetWorkout()
+            return
+        }
+        let endDate = Date()
+
+        // Создание объекта пробежки
+        let workout = HKWorkout(
+            activityType: .running,
+            start: startDate,
+            end: endDate,
+            duration: runTimer.totalTime,
+            totalEnergyBurned: HKQuantity(unit: .kilocalorie(), doubleValue: runManager.calories),
+            totalDistance: HKQuantity(unit: .meter(), doubleValue: runManager.totalDistance * 1000),
+            device: nil,
+            metadata: nil
+        )
+
+        // Сохранение пробежки
+        healthStore.save(workout) { [weak self] success, error in
+            if success {
+                // Сохранение маршрута, если он есть
+                if let routeBuilder = self?.routeBuilder, !(self?.runManager.locations.isEmpty ?? true) {
+                    routeBuilder.insertRouteData(self?.runManager.locations ?? []) { success, error in
+                        if !success {
+                            print("Ошибка добавления финальных локаций: \(error?.localizedDescription ?? "")")
+                        }
+                        // Завершаем маршрут с привязкой к workout
+                        routeBuilder.finishRoute(with: workout, metadata: nil) { route, error in
+                            if let route = route {
+                                self?.workoutRoutes.append(route)
+                                self?.healthStore.add([route], to: workout) { success, error in
+                                    if !success {
+                                        print("Ошибка добавления маршрута: \(error?.localizedDescription ?? "")")
+                                    }
+                                    self?.resetWorkout()
+                                }
+                            } else {
+                                print("Ошибка завершения маршрута: \(error?.localizedDescription ?? "")")
+                                self?.resetWorkout()
+                            }
+                        }
+                    }
+                } else {
+                    self?.resetWorkout()
                 }
+            } else {
+                print("Ошибка сохранения пробежки: \(error?.localizedDescription ?? "")")
+                self?.resetWorkout()
             }
-        }
-        DispatchQueue.main.async { [weak self] in
-            let runManager = RunManager.shared
-            runManager.calories = totalCalories
-            self?.caloriesNumberLabel.text = self?.integerFormatter.string(from: NSNumber(value: totalCalories)) ?? "0"
         }
     }
 
-    private func stopCalorieUpdates() {
-        if let query = calorieQuery {
-            healthStore.stop(query)
-            calorieQuery = nil
-        }
+    private func resetWorkout() {
+        routeBuilder = nil
+        workoutRoutes = []
+        workoutStartDate = nil
     }
 
-    private func fetchCalories() {
-        guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
-        let now = Date()
-        let startOfRun = runTimer.startTime ?? now
-        let predicate = HKQuery.predicateForSamples(withStart: startOfRun, end: now, options: .strictStartDate)
+    private func saveRunState() {
+        // Сохраняем координаты маршрута
+        let coordinatesData = allRouteCoordinates.map { ["latitude": $0.latitude, "longitude": $0.longitude] }
+        userDefaults.set(coordinatesData, forKey: routeCoordinatesKey)
+        // Сохраняем дистанцию и калории
+        userDefaults.set(runManager.totalDistance, forKey: totalDistanceKey)
+        userDefaults.set(runManager.calories, forKey: caloriesKey)
+        // Сохраняем дату начала пробежки
+        userDefaults.set(workoutStartDate, forKey: workoutStartDateKey)
+    }
 
-        let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-            if let sum = result?.sumQuantity() {
-                let calories = sum.doubleValue(for: HKUnit.kilocalorie())
-                DispatchQueue.main.async {
-                    RunManager.shared.calories = calories
-                    self?.caloriesNumberLabel.text = self?.integerFormatter.string(from: NSNumber(value: calories)) ?? "0"
-                }
-            }
-        }
-        healthStore.execute(query)
+    private func clearSavedRunState() {
+        userDefaults.removeObject(forKey: routeCoordinatesKey)
+        userDefaults.removeObject(forKey: totalDistanceKey)
+        userDefaults.removeObject(forKey: caloriesKey)
+        userDefaults.removeObject(forKey: workoutStartDateKey)
     }
 
     private func restoreRunState() {
-        // Восстанавливаем состояние UI на основе текущего состояния пробежки
         if runManager.isRunning {
             // Запускаем таймер, если пробежка активна
             timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
-
-            // Если пробежка не на паузе, продолжаем обновлять местоположение
             if !runManager.isPaused {
-                // locationManager.startUpdatingLocation()
-                // LocationManager.shared.startUpdatingLocation()
+                routeTimer = Timer.scheduledTimer(timeInterval: 60.0, target: self, selector: #selector(savePartialRoute), userInfo: nil, repeats: true)
+                LocationManager.shared.startUpdatingLocation()
             } else {
                 speedNumberLabel.text = "0,0"
             }
         }
 
-        updateUI()
+        // Восстанавливаем координаты маршрута из UserDefaults
+        if let coordinatesData = userDefaults.array(forKey: routeCoordinatesKey) as? [[String: Double]] {
+            allRouteCoordinates = coordinatesData.map { CLLocationCoordinate2D(latitude: $0["latitude"]!, longitude: $0["longitude"]!) }
+        }
+
+        // Восстанавливаем дистанцию и калории
+        runManager.totalDistance = userDefaults.double(forKey: totalDistanceKey)
+        runManager.calories = userDefaults.double(forKey: caloriesKey)
+        workoutStartDate = userDefaults.object(forKey: workoutStartDateKey) as? Date
+
+        // Явно обновляем все метки и маршрут
+        timeLabel.text = String(formatTime(from: runTimer.totalTime))
+        distanceNumberLabel.text = decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
+        caloriesNumberLabel.text = integerFormatter.string(from: NSNumber(value: runManager.calories)) ?? "0"
+        updateButtons()
+        updateRouteOverlay() // Восстанавливаем линию маршрута
     }
 
     // MARK: - Map & Location Logic
 
     @objc private func locationDidUpdate(_ notification: Notification) {
-            guard let newLocation = notification.userInfo?["location"] as? CLLocation else { return }
+        guard let newLocation = notification.userInfo?["location"] as? CLLocation else { return }
 
-            // Обновляем маршрут и дистанцию только во время активной пробежки
-            let runManager = RunManager.shared
-            if runManager.isRunning && !runManager.isPaused {
-                runManager.locations.append(newLocation)
-                DispatchQueue.main.async { [weak self] in
-                    self?.routeCoordinates = runManager.locations.map { $0.coordinate }
-
-                    // Обновление дистанции
-                    if runManager.locations.count > 1 {
-                        let lastLocation = runManager.locations[runManager.locations.count - 2]
-                        runManager.totalDistance += newLocation.distance(from: lastLocation) / 1000
-                        self?.distanceNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
-                    }
-
-                    // Обновление скорости на основе данных CLLocation
-                    let speed = newLocation.speed >= 0 ? newLocation.speed * 3.6 : 0.0 // Convert m/s to km/h
-                    self?.speedNumberLabel.text = self?.decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
-
-                    self?.updateRouteOverlay()
-                }
-            }
-
-            // Обновление позиции камеры карты, если в режиме следования
+        if runManager.isRunning && !runManager.isPaused {
+            runManager.locations.append(newLocation)
+            allRouteCoordinates.append(newLocation.coordinate)
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                if self.recenterTimer == nil {
-                    self.isProgrammaticRegionChange = true
-                    if !self.hasInitialCentered {
-                        let region = MKCoordinateRegion(
-                            center: newLocation.coordinate,
-                            latitudinalMeters: 500,
-                            longitudinalMeters: 500
-                        )
-                        self.mapView.setRegion(region, animated: false)
-                        self.hasInitialCentered = true
-                    } else {
-                        self.mapView.setCenter(newLocation.coordinate, animated: true)
+                self.routeCoordinates = self.allRouteCoordinates
+
+                // Обновление дистанции и калорий
+                if let lastLocation = self.lastLocation {
+                    let deltaDistance = newLocation.distance(from: lastLocation)
+                    runManager.totalDistance += deltaDistance / 1000
+                    self.distanceNumberLabel.text = self.decimalFormatter.string(from: NSNumber(value: runManager.totalDistance)) ?? "0,0"
+
+                    // Расчет калорий
+                    let deltaKm = deltaDistance / 1000
+                    let deltaCalories = deltaKm * self.userWeight * 1.0 // Примерная формула
+                    runManager.calories += deltaCalories
+                    self.caloriesNumberLabel.text = self.integerFormatter.string(from: NSNumber(value: runManager.calories)) ?? "0"
+
+                    // Сохранение дистанции
+                    if let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+                        let distanceQuantity = HKQuantity(unit: .meter(), doubleValue: deltaDistance)
+                        let distanceSample = HKQuantitySample(type: distanceType, quantity: distanceQuantity, start: lastLocation.timestamp, end: newLocation.timestamp)
+                        self.healthStore.save(distanceSample) { success, error in
+                            if !success {
+                                print("Ошибка сохранения дистанции: \(error?.localizedDescription ?? "")")
+                            }
+                        }
                     }
-                    self.isProgrammaticRegionChange = false
+
+                    // Сохранение калорий
+                    if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+                        let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: deltaCalories)
+                        let energySample = HKQuantitySample(type: energyType, quantity: energyQuantity, start: lastLocation.timestamp, end: newLocation.timestamp)
+                        self.healthStore.save(energySample) { success, error in
+                            if !success {
+                                print("Ошибка сохранения калорий: \(error?.localizedDescription ?? "")")
+                            }
+                        }
+                    }
                 }
+
+                // Обновление скорости
+                let speed = newLocation.speed >= 0 ? newLocation.speed * 3.6 : 0.0
+                self.speedNumberLabel.text = self.decimalFormatter.string(from: NSNumber(value: speed)) ?? "0,0"
+
+                self.updateRouteOverlay()
+                self.lastLocation = newLocation
+                // Сохраняем состояние после обновления
+                self.saveRunState()
             }
         }
+
+        // Обновление позиции камеры карты
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if self.recenterTimer == nil {
+                self.isProgrammaticRegionChange = true
+                if !self.hasInitialCentered {
+                    let region = MKCoordinateRegion(
+                        center: newLocation.coordinate,
+                        latitudinalMeters: 500,
+                        longitudinalMeters: 500
+                    )
+                    self.mapView.setRegion(region, animated: false)
+                    self.hasInitialCentered = true
+                } else {
+                    self.mapView.setCenter(newLocation.coordinate, animated: true)
+                }
+                self.isProgrammaticRegionChange = false
+            }
+        }
+    }
 
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let polyline = overlay as? MKPolyline {
@@ -605,8 +694,8 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         if let overlay = routeOverlay {
             mapView.removeOverlay(overlay)
         }
-        if routeCoordinates.count > 1 {
-            routeOverlay = MKPolyline(coordinates: routeCoordinates, count: routeCoordinates.count)
+        if allRouteCoordinates.count > 1 {
+            routeOverlay = MKPolyline(coordinates: allRouteCoordinates, count: allRouteCoordinates.count)
             mapView.addOverlay(routeOverlay!)
         }
     }
@@ -615,11 +704,38 @@ class MapViewController: UIViewController, MKMapViewDelegate {
 
     private func requestPermissions() {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let typesToRead: Set = [HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!]
-        healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
-            if !success {
+
+        let typesToShare: Set<HKSampleType> = [
+            HKWorkoutType.workoutType(),
+            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKSeriesType.workoutRoute()
+        ]
+
+        let typesToRead: Set<HKObjectType> = [
+            HKQuantityType.quantityType(forIdentifier: .bodyMass)!,
+            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
+        ]
+
+        healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { [weak self] success, error in
+            if success {
+                self?.fetchUserWeight()
+            } else {
                 print("Ошибка авторизации HealthKit: \(error?.localizedDescription ?? "Неизвестная ошибка")")
             }
         }
+    }
+
+    private func fetchUserWeight() {
+        guard let bodyMassType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
+
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+        let query = HKSampleQuery(sampleType: bodyMassType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
+            if let sample = samples?.first as? HKQuantitySample {
+                self?.userWeight = sample.quantity.doubleValue(for: .gramUnit(with: .kilo))
+            }
+        }
+        healthStore.execute(query)
     }
 }
