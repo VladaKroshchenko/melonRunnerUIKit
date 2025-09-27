@@ -18,7 +18,6 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        requestPermissions()
     }
 
     private func requestPermissions() {
@@ -27,14 +26,28 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
 
     // Публичный метод для начала обновления местоположения
     func startUpdatingLocation() {
-        if CLLocationManager.locationServicesEnabled() {
-            locationManager.startUpdatingLocation()
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            let status = self.locationManager.authorizationStatus
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                self.locationManager.startUpdatingLocation()
+            case .notDetermined:
+                self.requestPermissions()
+            case .denied, .restricted:
+                print("Доступ к местоположению запрещен")
+            @unknown default:
+                break
+            }
         }
     }
 
     // Публичный метод для остановки обновления местоположения
     func stopUpdatingLocation() {
-        locationManager.stopUpdatingLocation()
+        DispatchQueue.main.async { [weak self] in
+            self?.locationManager.stopUpdatingLocation()
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
