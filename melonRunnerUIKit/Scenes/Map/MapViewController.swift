@@ -212,6 +212,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         distanceNumberLabel.text = "0,0"
         distanceNumberLabel.font = .monospacedDigitSystemFont(ofSize: 21, weight: .bold)
         distanceNumberLabel.textColor = .black
+        distanceNumberLabel.adjustsFontSizeToFitWidth = true
         distValueStack.addArrangedSubview(distanceNumberLabel)
         distanceUnitLabel.text = "км"
         distanceUnitLabel.font = .systemFont(ofSize: 12, weight: .regular)
@@ -236,6 +237,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         caloriesNumberLabel.text = "0"
         caloriesNumberLabel.font = .monospacedDigitSystemFont(ofSize: 21, weight: .bold)
         caloriesNumberLabel.textColor = .black
+        caloriesNumberLabel.adjustsFontSizeToFitWidth = true
         calValueStack.addArrangedSubview(caloriesNumberLabel)
         caloriesUnitLabel.text = "ккал"
         caloriesUnitLabel.font = .systemFont(ofSize: 12, weight: .regular)
@@ -260,6 +262,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         speedNumberLabel.text = "0,0"
         speedNumberLabel.font = .monospacedDigitSystemFont(ofSize: 21, weight: .bold)
         speedNumberLabel.textColor = .black
+        speedNumberLabel.adjustsFontSizeToFitWidth = true
         speedValueStack.addArrangedSubview(speedNumberLabel)
         speedUnitLabel.text = "км/ч"
         speedUnitLabel.font = .systemFont(ofSize: 12, weight: .regular)
