@@ -18,6 +18,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = UINavigationController(rootViewController: MenuView())
         window?.makeKeyAndVisible()
         LocationManager.shared.startUpdatingLocation()
+        HealthKitManager.shared.requestPermissions { _ in }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
