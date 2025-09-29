@@ -45,7 +45,32 @@ final class MenuView: UIViewController {
         tableView.register(RunHistoryCell.self, forCellReuseIdentifier: "RunHistoryCell")
         return tableView
     }()
-    
+
+    private let placeholderView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .clear
+        return view
+    }()
+
+    private let placeholderImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        // Установить нужную картинку
+        imageView.image = UIImage(named: "PlaceHolderImage")
+        return imageView
+    }()
+
+    private let placeholderLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "Нет истории или не выдан доступ к здоровью"
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 16)
+        return label
+    }()
+
     //private var runs: [melonRunnerUIKit.Run] = []
     private var runs: [Run] = []
     
@@ -61,7 +86,7 @@ final class MenuView: UIViewController {
         setupLayout()
         startUpdatingButtonTitle()
         loadRunHistory()
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(healthKitPermissionsChanged),
@@ -135,6 +160,10 @@ final class MenuView: UIViewController {
         view.addSubview(historyTitleLabel)
         view.addSubview(historyTableView)
 
+        contentView.addSubview(placeholderView)
+        placeholderView.addSubview(placeholderImageView)
+        placeholderView.addSubview(placeholderLabel)
+
         // Добавление SwiftUI View
         let weatherView = WeatherView()
         weatherHostingController = UIHostingController(rootView: weatherView)
@@ -182,6 +211,22 @@ final class MenuView: UIViewController {
         historyTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24).isActive = true
         historyTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24).isActive = true
         historyTableView.heightAnchor.constraint(equalToConstant: 360).isActive = true
+
+        // Constraints для placeholderView
+        placeholderView.topAnchor.constraint(equalTo: historyTitleLabel.bottomAnchor, constant: 8).isActive = true
+        placeholderView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24).isActive = true
+        placeholderView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24).isActive = true
+        placeholderView.heightAnchor.constraint(equalToConstant: 360).isActive = true
+
+        // Constraints для элементов внутри placeholderView
+        placeholderImageView.centerXAnchor.constraint(equalTo: placeholderView.centerXAnchor).isActive = true
+        placeholderImageView.centerYAnchor.constraint(equalTo: placeholderView.centerYAnchor, constant: -20).isActive = true
+        placeholderImageView.widthAnchor.constraint(equalToConstant: 120).isActive = true
+        placeholderImageView.heightAnchor.constraint(equalToConstant: 120).isActive = true
+
+        placeholderLabel.topAnchor.constraint(equalTo: placeholderImageView.bottomAnchor, constant: 16).isActive = true
+        placeholderLabel.leadingAnchor.constraint(equalTo: placeholderView.leadingAnchor, constant: 16).isActive = true
+        placeholderLabel.trailingAnchor.constraint(equalTo: placeholderView.trailingAnchor, constant: -16).isActive = true
 
         // Layout для SwiftUI View
         if let weatherView = weatherHostingController?.view {
@@ -282,6 +327,7 @@ final class MenuView: UIViewController {
         let isEmpty = runs.isEmpty
         historyTitleLabel.isHidden = isEmpty
         historyTableView.isHidden = isEmpty
+        placeholderView.isHidden = !isEmpty
     }
 
     @objc private func healthKitPermissionsChanged() {
