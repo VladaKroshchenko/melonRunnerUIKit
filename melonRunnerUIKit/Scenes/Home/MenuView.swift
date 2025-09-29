@@ -26,6 +26,8 @@ final class MenuView: UIViewController {
     private let emojiLabel = UILabel()
     private let circleView = UIView()
 
+    private var centerRunLabel: NSLayoutConstraint = NSLayoutConstraint()
+    private var upperRunLabel: NSLayoutConstraint = NSLayoutConstraint()
     // MARK: - Run History Table
     private let historyTitleLabel: UILabel = {
         let label = UILabel()
@@ -247,7 +249,8 @@ final class MenuView: UIViewController {
         button.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24).isActive = true
         button.heightAnchor.constraint(equalToConstant: 64).isActive = true
         
-        runLabel.topAnchor.constraint(equalTo: button.topAnchor, constant: 17).isActive = true
+        centerRunLabel = runLabel.topAnchor.constraint(equalTo: button.topAnchor, constant: 17)
+        upperRunLabel = runLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor)
         runLabel.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 80).isActive = true
         
         distanceLabel.topAnchor.constraint(equalTo: button.topAnchor, constant: 17).isActive = true
@@ -288,24 +291,47 @@ final class MenuView: UIViewController {
         if runManager.isRunning && !runManager.isPaused {
             runLabel.text = "Текущая пробежка"
             emojiLabel.text = "🏃🏻‍➡️"
-            
+            updateButtonTextVisibility(show: true)
+
         } else if runManager.isPaused && runManager.isRunning {
             runLabel.text = "Пробежка на паузе"
             emojiLabel.text = "🚶🏻‍➡️"
-            
+            updateButtonTextVisibility(show: true)
+
         } else if !runManager.isPaused && !runManager.isRunning && runTimer.totalTime == 0 {
-            runLabel.text = "Пробежка не начата"
+            // Холодный старт
+            runLabel.text = "Начать пробежку"
             emojiLabel.text = "🧍🏻"
-            timeLabel.text = "00:00:00"
-            distanceLabel.text = "0.00 км"
-            caloriesLabel.text = "0 ккал"
-            
+            updateButtonTextVisibility(show: false)
+
         } else if !runManager.isPaused && !runManager.isRunning && runTimer.totalTime > 0 {
-            runLabel.text = "Пробежка окончена"
+            // Пробежка на стопе
+            runLabel.text = "Начать пробежку"
             emojiLabel.text = "🧍🏻"
+            updateButtonTextVisibility(show: false)
         }
     }
-    
+
+    private func updateButtonTextVisibility(show: Bool) {
+        if !show {
+            runLabel.font = UIFont.boldSystemFont(ofSize: 16)
+            centerRunLabel.isActive = false
+            upperRunLabel.isActive = true
+        } else {
+            runLabel.font = UIFont.boldSystemFont(ofSize: 14)
+            centerRunLabel.isActive = true
+            upperRunLabel.isActive = false
+        }
+//        view.setNeedsLayout()
+//        button.setNeedsLayout()
+//        button.layoutIfNeeded()
+//        view.layoutIfNeeded()
+
+        timeLabel.isHidden = !show
+        distanceLabel.isHidden = !show
+        caloriesLabel.isHidden = !show
+    }
+
     // MARK: - Run History
     private func loadRunHistory() {
         HealthKitManager.shared.fetchLastRuns { [weak self] runs in
