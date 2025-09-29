@@ -21,6 +21,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         HealthKitManager.shared.requestPermissions { success in
             if success {
                 print("HealthKit permissions granted")
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("HealthKitPermissionsChanged"), object: nil)
+                }
             } else {
                 print("HealthKit permissions denied")
             }

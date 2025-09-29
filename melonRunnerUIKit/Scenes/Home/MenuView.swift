@@ -61,6 +61,13 @@ final class MenuView: UIViewController {
         setupLayout()
         startUpdatingButtonTitle()
         loadRunHistory()
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(healthKitPermissionsChanged),
+            name: NSNotification.Name("HealthKitPermissionsChanged"),
+            object: nil
+        )
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -266,25 +273,32 @@ final class MenuView: UIViewController {
             
             DispatchQueue.main.async {
                 self.historyTableView.reloadData()
+                self.updateHistoryVisibility()
             }
         }
     }
-    
+
+    private func updateHistoryVisibility() {
+        let isEmpty = runs.isEmpty
+        historyTitleLabel.isHidden = isEmpty
+        historyTableView.isHidden = isEmpty
+    }
+
+    @objc private func healthKitPermissionsChanged() {
+        // Перезагрузить историю после получения пермишенов
+        loadRunHistory()
+    }
+
     // MARK: - Actions
     
     @objc func openMap() {
         let mapVC = MapViewController()
         navigationController?.pushViewController(mapVC, animated: true)
     }
-    
-//    // MARK: - Helper Functions
-//    
-//    private func formatTime(from timeInterval: TimeInterval) -> String {
-//        let hours = Int(timeInterval) / 3600
-//        let minutes = (Int(timeInterval) % 3600) / 60
-//        let seconds = Int(timeInterval) % 60
-//        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-//    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }
 
 // MARK: - UITableViewDataSource
