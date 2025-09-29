@@ -55,7 +55,7 @@ struct WeatherView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.MenuButton.circle.opacity(0.3))
+                .fill(Color.table)
         )
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
 
