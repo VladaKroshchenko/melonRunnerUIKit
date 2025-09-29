@@ -101,6 +101,9 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         super.viewWillDisappear(animated)
         // Сохраняем данные пробежки в UserDefaults
         saveRunState()
+        if !runManager.isRunning {
+            resetData()
+        }
     }
 
     // MARK: - Appearance
@@ -439,12 +442,12 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         }
     }
 
-private func saveWorkout() {
+    private func saveWorkout() {
         guard let startDate = workoutStartDate else {
             return
         }
         let endDate = Date()
-        
+
         HealthKitManager.shared.saveWorkout(
             startDate: startDate,
             endDate: endDate,
@@ -465,14 +468,18 @@ private func saveWorkout() {
     }
 
     private func saveRunState() {
-        // Сохраняем координаты маршрута
-        let coordinatesData = allRouteCoordinates.map { ["latitude": $0.latitude, "longitude": $0.longitude] }
-        userDefaults.set(coordinatesData, forKey: routeCoordinatesKey)
-        // Сохраняем дистанцию и калории
-        userDefaults.set(runManager.totalDistance, forKey: totalDistanceKey)
-        userDefaults.set(runManager.calories, forKey: caloriesKey)
-        // Сохраняем дату начала пробежки
-        userDefaults.set(workoutStartDate, forKey: workoutStartDateKey)
+        if runManager.isRunning {
+            // Сохраняем координаты маршрута
+            let coordinatesData = allRouteCoordinates.map { ["latitude": $0.latitude, "longitude": $0.longitude] }
+            userDefaults.set(coordinatesData, forKey: routeCoordinatesKey)
+            // Сохраняем дистанцию и калории
+            userDefaults.set(runManager.totalDistance, forKey: totalDistanceKey)
+            userDefaults.set(runManager.calories, forKey: caloriesKey)
+            // Сохраняем дату начала пробежки
+            userDefaults.set(workoutStartDate, forKey: workoutStartDateKey)
+        } else {
+            clearSavedRunState()
+        }
     }
 
     private func clearSavedRunState() {
@@ -497,6 +504,8 @@ private func saveWorkout() {
         // Восстанавливаем координаты маршрута из UserDefaults
         if let coordinatesData = userDefaults.array(forKey: routeCoordinatesKey) as? [[String: Double]] {
             allRouteCoordinates = coordinatesData.map { CLLocationCoordinate2D(latitude: $0["latitude"]!, longitude: $0["longitude"]!) }
+        } else {
+            allRouteCoordinates = []
         }
 
         // Восстанавливаем дистанцию и калории
@@ -510,6 +519,20 @@ private func saveWorkout() {
         caloriesNumberLabel.text = integerFormatter.string(from: NSNumber(value: runManager.calories)) ?? "0"
         updateButtons()
         updateRouteOverlay() // Восстанавливаем линию маршрута
+    }
+
+    private func resetData() {
+        allRouteCoordinates.removeAll()
+        runManager.locations.removeAll()
+        runManager.totalDistance = 0.0
+        runManager.calories = 0.0
+        runTimer.totalTime = 0.0
+        workoutStartDate = nil
+        lastLocation = nil
+        if let overlay = routeOverlay {
+            mapView.removeOverlay(overlay)
+            routeOverlay = nil
+        }
     }
 
     // MARK: - Map & Location Logic
@@ -546,7 +569,7 @@ private func saveWorkout() {
                             print("Ошибка сохранения дистанции")
                         }
                     }
-                    
+
                     // Сохранение калорий
                     HealthKitManager.shared.saveCaloriesSample(
                         calories: deltaCalories,
@@ -678,7 +701,7 @@ private func saveWorkout() {
         ]
     }
 
-private func fetchUserWeight() {
+    private func fetchUserWeight() {
         // This is now handled by HealthKitManager
     }
 }
