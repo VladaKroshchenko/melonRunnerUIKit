@@ -22,10 +22,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             if success {
                 print("HealthKit permissions granted")
                 DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: NSNotification.Name("HealthKitPermissionsChanged"), object: nil)
+                    NotificationCenter.default.post(name: NSNotification.Name("healthKitPermissionsGranted"), object: nil)
                 }
             } else {
                 print("HealthKit permissions denied")
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("healthKitPermissionsDenied"), object: nil)
+                }
             }
         }
     }
