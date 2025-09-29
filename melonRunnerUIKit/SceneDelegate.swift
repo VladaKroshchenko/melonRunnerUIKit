@@ -18,6 +18,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = UINavigationController(rootViewController: MenuView())
         window?.makeKeyAndVisible()
         LocationManager.shared.startUpdatingLocation()
+        HealthKitManager.shared.requestPermissions { success in
+            if success {
+                print("HealthKit permissions granted")
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("HealthKitPermissionsChanged"), object: nil)
+                }
+            } else {
+                print("HealthKit permissions denied")
+            }
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
