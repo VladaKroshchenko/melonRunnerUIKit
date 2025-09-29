@@ -76,6 +76,17 @@ class RunHistoryCell: UITableViewCell {
         return stackView
     }()
 
+    private let placeholderImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.image = UIImage(systemName: "map") // или другое изображение
+        imageView.tintColor = .gray
+        imageView.contentMode = .center
+        imageView.layer.cornerRadius = 12
+        imageView.backgroundColor = .lightGray.withAlphaComponent(0.3)
+        return imageView
+    }()
+
     // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -96,6 +107,8 @@ class RunHistoryCell: UITableViewCell {
         contentView.addSubview(mapView)
         contentView.addSubview(infoStackView)
 
+        contentView.addSubview(placeholderImageView)
+
         bottomStackView.addArrangedSubview(caloriesLabel)
         bottomStackView.addArrangedSubview(paceLabel)
 
@@ -114,7 +127,12 @@ class RunHistoryCell: UITableViewCell {
             infoStackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             infoStackView.leadingAnchor.constraint(equalTo: mapView.trailingAnchor, constant: 16),
             infoStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            infoStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
+            infoStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+
+            placeholderImageView.topAnchor.constraint(equalTo: mapView.topAnchor),
+            placeholderImageView.leadingAnchor.constraint(equalTo: mapView.leadingAnchor),
+            placeholderImageView.bottomAnchor.constraint(equalTo: mapView.bottomAnchor),
+            placeholderImageView.trailingAnchor.constraint(equalTo: mapView.trailingAnchor)
         ])
     }
     
@@ -130,9 +148,11 @@ class RunHistoryCell: UITableViewCell {
     
     private func setupMapRoute(_ coordinates: [CLLocationCoordinate2D]) {
         mapView.removeOverlays(mapView.overlays)
-        
+        placeholderImageView.isHidden = true
+
         guard coordinates.count > 1 else {
             mapView.isHidden = true
+            placeholderImageView.isHidden = false
             return
         }
         
