@@ -67,7 +67,8 @@ final class MenuView: UIViewController {
         label.text = "Нет истории или не выдан доступ к здоровью"
         label.textAlignment = .center
         label.numberOfLines = 0
-        label.font = UIFont.systemFont(ofSize: 16)
+        label.textColor = UIColor.historyTitle
+        label.font = UIFont.systemFont(ofSize: 18)
         return label
     }()
 
