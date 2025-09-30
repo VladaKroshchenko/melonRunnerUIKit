@@ -58,7 +58,6 @@ final class MenuView: UIViewController {
     private let placeholderImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        // Установить нужную картинку
         imageView.image = UIImage(named: "PlaceHolderImage")
         return imageView
     }()
@@ -72,6 +71,17 @@ final class MenuView: UIViewController {
         label.textColor = UIColor.historyTitle
         label.font = UIFont.systemFont(ofSize: 18)
         return label
+    }()
+
+    private let placeholderButton: UIButton = {
+        let button = UIButton()
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Проверить доступ", for: .normal)
+        button.setTitleColor(UIColor.MenuButton.text, for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        button.backgroundColor = UIColor.MenuButton.button
+        button.layer.cornerRadius = 23
+        return button
     }()
 
     //private var runs: [melonRunnerUIKit.Run] = []
@@ -88,12 +98,19 @@ final class MenuView: UIViewController {
         setupUI()
         setupLayout()
         startUpdatingButtonTitle()
-        loadRunHistory()
+        updateHistoryVisibility()
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(healthKitPermissionsChanged),
-            name: NSNotification.Name("HealthKitPermissionsChanged"),
+            selector: #selector(healthKitPermissionsGranted),
+            name: NSNotification.Name("healthKitPermissionsGranted"),
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(healthKitPermissionsDenied),
+            name: NSNotification.Name("healthKitPermissionsDenied"),
             object: nil
         )
     }
@@ -122,7 +139,8 @@ final class MenuView: UIViewController {
         button.layer.cornerRadius = 30
         
         button.addTarget(self, action: #selector(openMap), for: .touchUpInside)
-        
+        placeholderButton.addTarget(self, action: #selector(refreshHealthKitPermission), for: .touchUpInside)
+
         // Настройка лейблов
         runLabel.font = UIFont.boldSystemFont(ofSize: 14)
         runLabel.textColor = UIColor.MenuButton.text
@@ -148,7 +166,8 @@ final class MenuView: UIViewController {
         // Настройка таблицы истории пробежек
         historyTableView.delegate = self
         historyTableView.dataSource = self
-        historyTableView.isScrollEnabled = false
+        historyTableView.isScrollEnabled = true
+        historyTableView.scrollIndicatorInsets = UIEdgeInsets(top: 10, left: 0, bottom: 10, right: 0)
         historyTableView.layer.cornerRadius = 16
 
         view.addSubview(contentView)
@@ -163,9 +182,10 @@ final class MenuView: UIViewController {
         view.addSubview(historyTitleLabel)
         view.addSubview(historyTableView)
 
-        contentView.addSubview(placeholderView)
-        placeholderView.addSubview(placeholderImageView)
-        placeholderView.addSubview(placeholderLabel)
+        view.addSubview(placeholderView)
+        view.addSubview(placeholderLabel)
+        view.addSubview(placeholderImageView)
+        view.addSubview(placeholderButton)
 
         // Добавление SwiftUI View
         let weatherView = WeatherView()
@@ -194,7 +214,8 @@ final class MenuView: UIViewController {
         caloriesLabel.translatesAutoresizingMaskIntoConstraints = false
         emojiLabel.translatesAutoresizingMaskIntoConstraints = false
         circleView.translatesAutoresizingMaskIntoConstraints = false
-        
+        placeholderButton.translatesAutoresizingMaskIntoConstraints = false
+
         contentView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
         contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
         contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
@@ -230,6 +251,11 @@ final class MenuView: UIViewController {
         placeholderLabel.topAnchor.constraint(equalTo: placeholderImageView.bottomAnchor, constant: 16).isActive = true
         placeholderLabel.leadingAnchor.constraint(equalTo: placeholderView.leadingAnchor, constant: 16).isActive = true
         placeholderLabel.trailingAnchor.constraint(equalTo: placeholderView.trailingAnchor, constant: -16).isActive = true
+
+        placeholderButton.topAnchor.constraint(equalTo: placeholderLabel.bottomAnchor, constant: 16).isActive = true
+        placeholderButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
+        placeholderButton.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        placeholderButton.heightAnchor.constraint(equalToConstant: 46).isActive = true
 
         // Layout для SwiftUI View
         if let weatherView = weatherHostingController?.view {
@@ -322,10 +348,6 @@ final class MenuView: UIViewController {
             centerRunLabel.isActive = true
             upperRunLabel.isActive = false
         }
-//        view.setNeedsLayout()
-//        button.setNeedsLayout()
-//        button.layoutIfNeeded()
-//        view.layoutIfNeeded()
 
         timeLabel.isHidden = !show
         distanceLabel.isHidden = !show
@@ -355,11 +377,19 @@ final class MenuView: UIViewController {
         historyTitleLabel.isHidden = isEmpty
         historyTableView.isHidden = isEmpty
         placeholderView.isHidden = !isEmpty
+        placeholderLabel.isHidden = !isEmpty
+        placeholderButton.isHidden = !isEmpty
+        placeholderImageView.isHidden = !isEmpty
     }
 
-    @objc private func healthKitPermissionsChanged() {
+    @objc private func healthKitPermissionsGranted() {
         // Перезагрузить историю после получения пермишенов
         loadRunHistory()
+    }
+
+    @objc private func healthKitPermissionsDenied() {
+        // Показать плейсхолдер если не получили пермишенов
+        updateHistoryVisibility()
     }
 
     // MARK: - Actions
@@ -367,6 +397,56 @@ final class MenuView: UIViewController {
     @objc func openMap() {
         let mapVC = MapViewController()
         navigationController?.pushViewController(mapVC, animated: true)
+    }
+
+    @objc private func refreshHealthKitPermission() {
+        print("request")
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
+        let healthStore = HKHealthStore()
+        let workoutType = HKObjectType.workoutType()
+
+        // Проверить текущий статус авторизации
+        let status = healthStore.authorizationStatus(for: workoutType)
+
+        if status == .notDetermined {
+            // Если пермишены еще не запрашивались, запросить их
+            HealthKitManager.shared.requestPermissions { [weak self] success in
+                DispatchQueue.main.async {
+                    if success {
+                        self?.loadRunHistory()
+                    }
+                }
+            }
+        } else if status == .sharingDenied {
+                // Если пермишены отклонены, показать alert с предложением открыть настройки
+                let alert = UIAlertController(
+                    title: "Доступ к данным о здоровье",
+                    message: "Для отображения истории пробежек необходимо разрешить доступ к данным о здоровье. Пожалуйста, откройте Настройки и разрешите доступ.",
+                    preferredStyle: .alert
+                )
+
+                alert.addAction(UIAlertAction(title: "Открыть Настройки", style: .default) { _ in
+                    if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsUrl)
+                    }
+                })
+
+                alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+
+                present(alert, animated: true)
+            }
+        }
+
+    @objc private func appDidBecomeActive() {
+        loadRunHistory()
+        updateHistoryVisibility()
     }
 
     deinit {

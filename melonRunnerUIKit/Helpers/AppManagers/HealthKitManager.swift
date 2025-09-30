@@ -41,14 +41,22 @@ class HealthKitManager {
             HKWorkoutType.workoutType()
         ]
         
-        healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { [weak self] success, error in
-            if success {
+        healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { [weak self] _, error in
+            let workoutType = HKObjectType.workoutType()
+            let status = self?.healthStore.authorizationStatus(for: workoutType) ?? .notDetermined
+
+            if status == .sharingAuthorized {
                 self?.fetchUserWeight()
+                DispatchQueue.main.async {
+                    completion(true)
+                }
             } else {
-                print("Ошибка авторизации HealthKit: \(error?.localizedDescription ?? "Неизвестная ошибка")")
-            }
-            DispatchQueue.main.async {
-                completion(success)
+                if let error = error {
+                    print("Ошибка авторизации HealthKit: \(error.localizedDescription)")
+                }
+                DispatchQueue.main.async {
+                    completion(false)
+                }
             }
         }
     }
@@ -244,7 +252,7 @@ class HealthKitManager {
         let query = HKSampleQuery(
             sampleType: workoutType,
             predicate: HKQuery.predicateForWorkouts(with: .running),
-            limit: 3,
+            limit: 30,
             sortDescriptors: [sortDescriptor]
         ) { [weak self] _, samples, error in
             guard let workouts = samples as? [HKWorkout], error == nil else {
